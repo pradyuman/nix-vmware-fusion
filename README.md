@@ -1,0 +1,88 @@
+# nix-vmware-fusion
+
+Manage VMware Fusion on macOS with Nix.
+
+The flake is currently pinned to VMware Fusion `26H1` (build `25388279`) for
+Macs with Apple silicon.
+
+## Install
+
+### 1. Download VMware Fusion
+
+Sign in to the [VMware Fusion 26H1 downloads page][fusion-downloads] and
+download this file:
+
+```text
+VMware-Fusion-26H1-25388279_universal.dmg
+```
+
+If prompted, review and accept Broadcom's Terms and Conditions and complete the
+Trade Compliance form. Broadcom's [download instructions][broadcom-download-instructions]
+explain these steps.
+
+> [!IMPORTANT]
+> The filename must remain unchanged because Nix identifies the required file
+> by both its name and content hash.
+
+### 2. Add the DMG to the Nix store
+
+```sh
+# Replace this path if the DMG is elsewhere.
+dmg="$HOME/Downloads/VMware-Fusion-26H1-25388279_universal.dmg"
+nix store add --mode flat --hash-algo sha256 "$dmg"
+```
+
+Nix computes the DMG's SHA-256 when you add it to the store. If it does not
+match Broadcom's published hash, the install command will fail.
+
+Later runs reuse the copy in the Nix store, so you usually only need to import
+the DMG once per pinned VMware Fusion build. That said, you will need to import
+it again if garbage collection removes it or if you move to a new machine.
+
+### 3. Install VMware Fusion
+
+```sh
+NIXPKGS_ALLOW_UNFREE=1 nix run --impure github:pradyuman/nix-vmware-fusion#install
+```
+
+The installer uses `sudo` to install the app in `/Applications` and initialize
+VMware's privileged helpers.
+
+## Uninstall
+
+To remove the app:
+
+```sh
+nix run github:pradyuman/nix-vmware-fusion#uninstall
+```
+
+The uninstaller removes `/Applications/VMware Fusion.app` but leaves your
+virtual machines, preferences, and privileged helpers in place.
+
+## Why not a normal package?
+
+Some files in VMware's app bundle store code-signature data in macOS extended
+attributes. Because the [Nix archive format][nix-archive-format] does not
+preserve those attributes, storing the extracted app directly in the Nix store
+would discard the signature data (which means strict code-signature verification
+would fail even though the files themselves were unchanged).
+
+So instead, the flake stores the original DMG as an opaque file. At runtime, it
+mounts the DMG and copies the app with `ditto` (which preserves the extended
+attributes), and then verifies the copy before installing and initializing it.
+
+## Licensing
+
+The code in this repository is licensed under the [ISC License](LICENSE). That
+license does not apply to VMware Fusion.
+
+Broadcom currently makes the supported VMware Fusion release available at no
+charge for personal, educational, and commercial use. Nevertheless, VMware
+Fusion remains proprietary software. Downloading, installing, and using it is
+subject to Broadcom's applicable [licensing terms][broadcom-licensing], product-specific
+terms, and any conditions shown during download.
+
+[broadcom-download-instructions]: https://knowledge.broadcom.com/external/article/368667/download-and-license-vmware-desktop-hype.html
+[broadcom-licensing]: https://www.broadcom.com/company/legal/licensing
+[fusion-downloads]: https://support.broadcom.com/group/ecx/productfiles?subFamily=VMware%20Fusion&displayGroup=VMware%20Fusion%2026H1&release=26H1&servicePk=543219&language=EN&freeDownloads=true
+[nix-archive-format]: https://nix.dev/manual/nix/latest/protocols/nix-archive
