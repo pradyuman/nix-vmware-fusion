@@ -41,6 +41,38 @@ it again if garbage collection removes it or if you move to a new machine.
 
 ### 3. Install VMware Fusion
 
+#### With nix-darwin
+
+Add the module to your nix-darwin configuration:
+
+```nix
+{
+  inputs.nix-vmware-fusion = {
+    url = "github:pradyuman/nix-vmware-fusion";
+    inputs.nixpkgs.follows = "nixpkgs";
+  };
+
+  outputs = { nix-darwin, nix-vmware-fusion, ... }: {
+    darwinConfigurations.my-mac = nix-darwin.lib.darwinSystem {
+      modules = [
+        nix-vmware-fusion.darwinModules.default
+        {
+          programs.vmware-fusion.enable = true;
+        }
+      ];
+    };
+  };
+}
+```
+
+On activation, the module installs the pinned build unless the same build is
+already installed. It also adds the `vmware-fusion-install` and
+`vmware-fusion-uninstall` commands to the system profile.
+
+#### Directly
+
+If you do not use nix-darwin, you can run the installer directly:
+
 ```sh
 NIXPKGS_ALLOW_UNFREE=1 nix run --impure github:pradyuman/nix-vmware-fusion#install
 ```
@@ -50,7 +82,8 @@ VMware's privileged helpers.
 
 ## Uninstall
 
-To remove the app:
+Disabling the nix-darwin module does not remove VMware Fusion. To remove the
+app:
 
 ```sh
 nix run github:pradyuman/nix-vmware-fusion#uninstall

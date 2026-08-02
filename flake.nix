@@ -1,5 +1,5 @@
 {
-  description = "Install VMware Fusion with Nix";
+  description = "Manage VMware Fusion on macOS with Nix";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
@@ -17,24 +17,22 @@
     }:
     let
       pkgs = nixpkgs.legacyPackages.aarch64-darwin;
-      dmg = pkgs.callPackage ./pkgs/dmg.nix { };
-      installer = pkgs.callPackage ./pkgs/installer.nix {
-        inherit dmg;
-      };
-      uninstaller = pkgs.callPackage ./pkgs/uninstaller.nix { };
+      localPkgs = import ./pkgs { inherit pkgs; };
     in
     {
       apps.aarch64-darwin = {
         install = {
           type = "app";
-          program = nixpkgs.lib.getExe installer;
+          program = nixpkgs.lib.getExe localPkgs.installer;
         };
 
         uninstall = {
           type = "app";
-          program = nixpkgs.lib.getExe uninstaller;
+          program = nixpkgs.lib.getExe localPkgs.uninstaller;
         };
       };
+
+      darwinModules.default = import ./modules/darwin.nix;
 
       formatter.aarch64-darwin =
         let

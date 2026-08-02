@@ -5,7 +5,7 @@
 }:
 
 writeShellApplication {
-  name = "install-vmware-fusion";
+  name = "vmware-fusion-install";
 
   text = ''
     source_dmg="${dmg}"
@@ -103,8 +103,8 @@ writeShellApplication {
 
   meta = {
     description = "Install and initialize VMware Fusion";
-    license = lib.licenses.unfree;
+    license = lib.licenses.isc;
     platforms = lib.platforms.darwin;
-    mainProgram = "install-vmware-fusion";
+    mainProgram = "vmware-fusion-install";
   };
 }

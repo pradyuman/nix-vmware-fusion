@@ -4,7 +4,7 @@
 }:
 
 writeShellApplication {
-  name = "uninstall-vmware-fusion";
+  name = "vmware-fusion-uninstall";
 
   text = ''
     target_app="/Applications/VMware Fusion.app"
@@ -33,6 +33,6 @@ writeShellApplication {
     description = "Remove the VMware Fusion application";
     license = lib.licenses.isc;
     platforms = lib.platforms.darwin;
-    mainProgram = "uninstall-vmware-fusion";
+    mainProgram = "vmware-fusion-uninstall";
   };
 }
