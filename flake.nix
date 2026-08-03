@@ -3,6 +3,10 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    nix-darwin = {
+      url = "github:nix-darwin/nix-darwin";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     treefmt-nix = {
       url = "github:numtide/treefmt-nix";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -11,6 +15,7 @@
 
   outputs =
     {
+      nix-darwin,
       nixpkgs,
       treefmt-nix,
       ...
@@ -31,6 +36,19 @@
           program = nixpkgs.lib.getExe localPkgs.uninstaller;
         };
       };
+
+      checks.aarch64-darwin.darwin-module =
+        pkgs.runCommand "darwin-module-tests"
+          {
+            nativeBuildInputs = [ pkgs.nix-unit ];
+          }
+          ''
+            nix-unit \
+              --arg nixpkgs '${nixpkgs}' \
+              --arg nixDarwin '${nix-darwin}' \
+              ${./.}/tests/modules/darwin.nix
+            touch "$out"
+          '';
 
       darwinModules.default = import ./modules/darwin.nix;
 
