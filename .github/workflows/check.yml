@@ -27,5 +27,8 @@ jobs:
       - name: Check formatting
         run: nix fmt -- --ci
 
+      - name: Build command-line tools
+        run: nix build --no-link -L .#checks.aarch64-darwin.command-line-tools
+
       - name: Test Darwin module
         run: nix build --no-link -L .#checks.aarch64-darwin.darwin-module

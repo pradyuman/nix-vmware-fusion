@@ -6,6 +6,8 @@ in
 {
   inherit dmg;
 
+  commandLineTools = pkgs.callPackage ./command-line-tools.nix { };
+
   installer = pkgs.callPackage ./installer.nix {
     inherit dmg;
   };

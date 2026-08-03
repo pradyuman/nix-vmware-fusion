@@ -61,6 +61,7 @@ in
   testEnabledPackages = {
     expr = enabledVmwareFusionPackageNames;
     expected = [
+      "vmware-fusion-command-line-tools"
       "vmware-fusion-install"
       "vmware-fusion-uninstall"
     ];

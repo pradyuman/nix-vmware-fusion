@@ -37,18 +37,22 @@
         };
       };
 
-      checks.aarch64-darwin.darwin-module =
-        pkgs.runCommand "darwin-module-tests"
-          {
-            nativeBuildInputs = [ pkgs.nix-unit ];
-          }
-          ''
-            nix-unit \
-              --arg nixpkgs '${nixpkgs}' \
-              --arg nixDarwin '${nix-darwin}' \
-              ${./.}/tests/modules/darwin.nix
-            touch "$out"
-          '';
+      checks.aarch64-darwin = {
+        command-line-tools = localPkgs.commandLineTools;
+
+        darwin-module =
+          pkgs.runCommand "darwin-module-tests"
+            {
+              nativeBuildInputs = [ pkgs.nix-unit ];
+            }
+            ''
+              nix-unit \
+                --arg nixpkgs '${nixpkgs}' \
+                --arg nixDarwin '${nix-darwin}' \
+                ${./.}/tests/modules/darwin.nix
+              touch "$out"
+            '';
+      };
 
       darwinModules.default = import ./modules/darwin.nix;
 

@@ -23,6 +23,7 @@ in
     ];
 
     environment.systemPackages = [
+      localPkgs.commandLineTools
       localPkgs.installer
       localPkgs.uninstaller
     ];

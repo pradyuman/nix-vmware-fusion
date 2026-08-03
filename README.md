@@ -67,7 +67,9 @@ Add the module to your nix-darwin configuration:
 
 On activation, the module installs the pinned build unless the same build is
 already installed. It also adds the `vmware-fusion-install` and
-`vmware-fusion-uninstall` commands to the system profile.
+`vmware-fusion-uninstall` commands, as well as VMware Fusion's bundled
+command-line tools (including `vmrun`, `vmcli`, `vmrest`, `vmnet-cli`, and
+`ovftool`), to the system profile.
 
 #### Directly
 
