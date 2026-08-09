@@ -12,5 +12,8 @@ in
     inherit dmg;
   };
 
+  purge = pkgs.callPackage ./purge {
+    vmwareFusionVersion = dmg.version;
+  };
   uninstaller = pkgs.callPackage ./uninstaller.nix { };
 }
