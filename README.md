@@ -101,6 +101,47 @@ NIXPKGS_ALLOW_UNFREE=1 nix run --impure github:pradyuman/nix-vmware-fusion#insta
 The installer uses `sudo` to install the app in `/Applications` and initialize
 VMware's privileged helpers.
 
+## Manage user preferences
+
+To manage user preferences, use the Home Manager module:
+
+```nix
+{
+  imports = [ nix-vmware-fusion.homeModules.default ];
+
+  programs.vmware-fusion = {
+    enable = true;
+    settings = {
+      appearance = "dark";
+      confirmBeforeClosing = true;
+      dataCollectionEnabled = false;
+      fullScreenMode = "fit";
+      mapISONumpadEnterToAltGrEnabled = false;
+    };
+  };
+}
+```
+
+The module supports these settings:
+
+| Setting                      | Values                           | Description                                                    |
+| ---------------------------- | -------------------------------- | -------------------------------------------------------------- |
+| `appearance`                 | `"auto"`, `"light"`, `"dark"`    | VMware Fusion's appearance.                                    |
+| `closeAction`                | `"suspend"`, `"power-off"`       | Action to take when closing a virtual machine window.          |
+| `confirmBeforeClosing`       | `true`, `false`                  | Whether to confirm before closing a virtual machine or Fusion. |
+| `dataCollectionEnabled`      | `true`, `false`                  | Whether to participate in VMware's data collection program.    |
+| `fullScreenMode`             | `"center"`, `"stretch"`, `"fit"` | How to size a virtual machine in full screen.                  |
+| `gamingMouseMode`            | `"auto"`, `"never"`, `"always"`  | When to optimize the mouse for games.                          |
+| `perVirtualMachineShortcuts` | `true`, `false`                  | Whether to enable per-virtual machine keyboard shortcuts.      |
+| `singleWindowMode`           | `"stretch"`, `"resize"`          | How to size a virtual machine in a single window.              |
+
+To manage a setting that is not listed above, add its VMware preference key to
+`settings` without the `pref.` prefix. Settings you do not specify are left
+unchanged.
+
+Quit VMware Fusion before activating your Home Manager configuration, then
+reopen it afterward so the new settings take effect.
+
 ## Remove VMware Fusion
 
 ### Uninstall

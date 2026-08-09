@@ -32,3 +32,6 @@ jobs:
 
       - name: Test Darwin module
         run: nix build --no-link -L .#checks.aarch64-darwin.darwin-module
+
+      - name: Test Home Manager module
+        run: nix build --no-link -L .#checks.aarch64-darwin.home-module

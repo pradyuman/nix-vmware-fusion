@@ -8,6 +8,7 @@ let
   app = "/Applications/VMware Fusion.app";
 
   tools = {
+    dictTool = "dictTool";
     ovftool = "VMware OVF Tool/ovftool";
     vmcli = "vmcli";
     vmnet-bridge = "vmnet-bridge";
