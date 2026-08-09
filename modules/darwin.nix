@@ -78,9 +78,7 @@ in
           )"
         fi
 
-        if [[ "$installed_build" == "${localPkgs.dmg.build}" ]]; then
-          echo "VMware Fusion build ${localPkgs.dmg.build} is already installed"
-        else
+        if [[ "$installed_build" != "${localPkgs.dmg.build}" ]]; then
           ${lib.getExe localPkgs.installer}
         fi
 

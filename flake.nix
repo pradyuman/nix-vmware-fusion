@@ -7,6 +7,10 @@
       url = "github:nix-darwin/nix-darwin";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    home-manager = {
+      url = "github:nix-community/home-manager";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     treefmt-nix = {
       url = "github:numtide/treefmt-nix";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -16,6 +20,7 @@
   outputs =
     {
       nix-darwin,
+      home-manager,
       nixpkgs,
       treefmt-nix,
       ...
@@ -58,9 +63,23 @@
               touch "$out"
             '';
 
+        home-module =
+          pkgs.runCommand "home-module-tests"
+            {
+              nativeBuildInputs = [ pkgs.nix-unit ];
+            }
+            ''
+              nix-unit \
+                --arg homeManager '${home-manager}' \
+                --arg nixpkgs '${nixpkgs}' \
+                ${./.}/tests/modules/home-manager.nix
+              touch "$out"
+            '';
       };
 
-      darwinModules.default = import ./modules/darwin.nix;
+      darwinModules.default = ./modules/darwin.nix;
+
+      homeModules.default = ./modules/home-manager;
 
       formatter.aarch64-darwin =
         let
