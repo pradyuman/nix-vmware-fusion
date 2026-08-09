@@ -73,6 +73,23 @@ already installed. It also adds the following to the system profile:
 - VMware Fusion's bundled command-line tools, including `vmrun`, `vmcli`,
   `vmrest`, `vmnet-cli`, and `ovftool`
 
+To manage VMware Fusion's networking config, set:
+
+```nix
+programs.vmware-fusion.networking.text = ''
+  VERSION=1,0
+  answer VNET_1_DHCP yes
+  answer VNET_1_HOSTONLY_NETMASK 255.255.255.0
+  answer VNET_1_HOSTONLY_SUBNET 192.168.200.0
+  answer VNET_1_VIRTUAL_ADAPTER yes
+  ...
+'';
+```
+
+During activation, the module replaces
+`/Library/Preferences/VMware Fusion/networking`. It does not apply the new
+configuration or restart VMware's networking services.
+
 #### Directly
 
 If you do not use nix-darwin, you can run the installer directly:
