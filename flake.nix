@@ -31,6 +31,11 @@
           program = nixpkgs.lib.getExe localPkgs.installer;
         };
 
+        purge = {
+          type = "app";
+          program = nixpkgs.lib.getExe localPkgs.purge;
+        };
+
         uninstall = {
           type = "app";
           program = nixpkgs.lib.getExe localPkgs.uninstaller;
@@ -52,6 +57,7 @@
                 ${./.}/tests/modules/darwin.nix
               touch "$out"
             '';
+
       };
 
       darwinModules.default = import ./modules/darwin.nix;

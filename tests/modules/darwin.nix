@@ -32,6 +32,7 @@ let
               source = nixpkgs;
             };
             programs.vmware-fusion = vmwareFusionConfig;
+            system.primaryUser = "test";
             system.stateVersion = config.system.maxStateVersion;
           }
         )
@@ -40,17 +41,26 @@ let
 
   defaultSystem = mkSystem { };
   enabledSystem = mkSystem { enable = true; };
+  uninstallingSystem = mkSystem { onActivation.cleanup = "uninstall"; };
+  purgingSystem = mkSystem { onActivation.cleanup = "purge"; };
 
   enabledVmwareFusionPackageNames = builtins.filter (lib.hasPrefix "vmware-fusion-") (
     map lib.getName enabledSystem.config.environment.systemPackages
   );
 
   enabledActivation = enabledSystem.config.system.activationScripts.postActivation.text;
+  uninstallingActivation = uninstallingSystem.config.system.activationScripts.postActivation.text;
+  purgingActivation = purgingSystem.config.system.activationScripts.postActivation.text;
 in
 {
   testDisabledByDefault = {
     expr = defaultSystem.config.programs.vmware-fusion.enable;
     expected = false;
+  };
+
+  testCleanupDefaultsToNone = {
+    expr = defaultSystem.config.programs.vmware-fusion.onActivation.cleanup;
+    expected = "none";
   };
 
   testAllowsVmwareFusionDmg = {
@@ -63,6 +73,7 @@ in
     expected = [
       "vmware-fusion-command-line-tools"
       "vmware-fusion-install"
+      "vmware-fusion-purge"
       "vmware-fusion-uninstall"
     ];
   };
@@ -74,6 +85,19 @@ in
 
   testActivationRunsInstaller = {
     expr = lib.hasInfix "vmware-fusion-install/bin/vmware-fusion-install" enabledActivation;
+    expected = true;
+  };
+
+  testCleanupUninstalls = {
+    expr = lib.hasInfix "vmware-fusion-uninstall/bin/vmware-fusion-uninstall" uninstallingActivation;
+    expected = true;
+  };
+
+  testCleanupPurges = {
+    expr =
+      lib.hasInfix "vmware-fusion-purge/bin/vmware-fusion-purge" purgingActivation
+      && lib.hasInfix "--yes" purgingActivation
+      && lib.hasInfix "--user test" purgingActivation;
     expected = true;
   };
 }

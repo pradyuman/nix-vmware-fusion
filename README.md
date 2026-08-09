@@ -66,10 +66,12 @@ Add the module to your nix-darwin configuration:
 ```
 
 On activation, the module installs the pinned build unless the same build is
-already installed. It also adds the `vmware-fusion-install` and
-`vmware-fusion-uninstall` commands, as well as VMware Fusion's bundled
-command-line tools (including `vmrun`, `vmcli`, `vmrest`, `vmnet-cli`, and
-`ovftool`), to the system profile.
+already installed. It also adds the following to the system profile:
+
+- `vmware-fusion-install`, `vmware-fusion-uninstall`, and
+  `vmware-fusion-purge`
+- VMware Fusion's bundled command-line tools, including `vmrun`, `vmcli`,
+  `vmrest`, `vmnet-cli`, and `ovftool`
 
 #### Directly
 
@@ -82,10 +84,21 @@ NIXPKGS_ALLOW_UNFREE=1 nix run --impure github:pradyuman/nix-vmware-fusion#insta
 The installer uses `sudo` to install the app in `/Applications` and initialize
 VMware's privileged helpers.
 
-## Uninstall
+## Remove VMware Fusion
 
-Disabling the nix-darwin module does not remove VMware Fusion. To remove the
-app:
+### Uninstall
+
+By default, disabling the nix-darwin module does not remove VMware Fusion. To
+uninstall during activation when the module is disabled, set:
+
+```nix
+programs.vmware-fusion = {
+  enable = false;
+  onActivation.cleanup = "uninstall";
+};
+```
+
+You can also run the uninstaller directly:
 
 ```sh
 nix run github:pradyuman/nix-vmware-fusion#uninstall
@@ -93,6 +106,33 @@ nix run github:pradyuman/nix-vmware-fusion#uninstall
 
 The uninstaller removes `/Applications/VMware Fusion.app` but leaves your
 virtual machines, preferences, and privileged helpers in place.
+
+### Purge
+
+Unlike uninstall (which only removes the app), purging also removes VMware
+Fusion's system support files, services, privileged helpers, and the selected
+user's preferences and logs. It does not touch any existing virtual machine
+bundles.
+
+To purge during activation when the nix-darwin module is disabled, set:
+
+```nix
+system.primaryUser = "my-user";
+
+programs.vmware-fusion = {
+  enable = false;
+  onActivation.cleanup = "purge";
+};
+```
+
+You can also run the command directly:
+
+```sh
+nix run github:pradyuman/nix-vmware-fusion#purge
+```
+
+Purging also removes `usbarb.rules` if the VMware application support directory
+contains no entries from other VMware programs.
 
 ## Why not a normal package?
 
