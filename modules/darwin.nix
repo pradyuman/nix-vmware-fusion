@@ -8,10 +8,26 @@
 let
   cfg = config.programs.vmware-fusion;
   localPkgs = import ../pkgs { inherit pkgs; };
+
+  networkingFile =
+    if cfg.networking.text == null then
+      null
+    else
+      pkgs.writeText "vmware-fusion-networking" cfg.networking.text;
 in
 {
   options.programs.vmware-fusion = {
     enable = lib.mkEnableOption "VMware Fusion";
+
+    networking.text = lib.mkOption {
+      type = lib.types.nullOr lib.types.lines;
+      default = null;
+      description = ''
+        Contents of VMware Fusion's system-wide networking file. During
+        activation, the module replaces the existing file with this text.
+        When unset, the module leaves the networking configuration unmanaged.
+      '';
+    };
 
     onActivation.cleanup = lib.mkOption {
       type = lib.types.enum [
@@ -67,6 +83,18 @@ in
         else
           ${lib.getExe localPkgs.installer}
         fi
+
+        ${lib.optionalString (cfg.networking.text != null) ''
+          source_networking=${lib.escapeShellArg networkingFile}
+          target_networking="/Library/Preferences/VMware Fusion/networking"
+
+          if [[ ! -f "$target_networking" ]] \
+            || ! /usr/bin/cmp -s "$source_networking" "$target_networking"; then
+            echo "Updating VMware Fusion's networking configuration..."
+            /bin/mkdir -p "''${target_networking%/*}"
+            /usr/bin/install -o root -g wheel -m 0644 "$source_networking" "$target_networking"
+          fi
+        ''}
       '';
     })
 
