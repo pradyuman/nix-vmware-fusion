@@ -68,8 +68,7 @@ Add the module to your nix-darwin configuration:
 On activation, the module installs the pinned build unless the same build is
 already installed. It also adds the following to the system profile:
 
-- `vmware-fusion-install`, `vmware-fusion-uninstall`, and
-  `vmware-fusion-purge`
+- `nix-vmware-fusion`, with `install`, `uninstall`, and `purge` subcommands
 - VMware Fusion's bundled command-line tools, including `vmrun`, `vmcli`,
   `vmrest`, `vmnet-cli`, and `ovftool`
 
@@ -95,7 +94,7 @@ configuration or restart VMware's networking services.
 If you do not use nix-darwin, you can run the installer directly:
 
 ```sh
-NIXPKGS_ALLOW_UNFREE=1 nix run --impure github:pradyuman/nix-vmware-fusion#install
+NIXPKGS_ALLOW_UNFREE=1 nix run --impure github:pradyuman/nix-vmware-fusion -- install
 ```
 
 The installer uses `sudo` to install the app in `/Applications` and initialize
@@ -159,7 +158,7 @@ programs.vmware-fusion = {
 You can also run the uninstaller directly:
 
 ```sh
-nix run github:pradyuman/nix-vmware-fusion#uninstall
+NIXPKGS_ALLOW_UNFREE=1 nix run --impure github:pradyuman/nix-vmware-fusion -- uninstall
 ```
 
 The uninstaller removes `/Applications/VMware Fusion.app` but leaves your
@@ -186,7 +185,7 @@ programs.vmware-fusion = {
 You can also run the command directly:
 
 ```sh
-nix run github:pradyuman/nix-vmware-fusion#purge
+NIXPKGS_ALLOW_UNFREE=1 nix run --impure github:pradyuman/nix-vmware-fusion -- purge
 ```
 
 Purging also removes `usbarb.rules` if the VMware application support directory

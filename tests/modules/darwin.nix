@@ -54,7 +54,7 @@ let
   uninstallingSystem = mkSystem { onActivation.cleanup = "uninstall"; };
   purgingSystem = mkSystem { onActivation.cleanup = "purge"; };
 
-  enabledVmwareFusionPackageNames = builtins.filter (lib.hasPrefix "vmware-fusion-") (
+  enabledVmwareFusionPackageNames = builtins.filter (name: lib.hasInfix "vmware-fusion" name) (
     map lib.getName enabledSystem.config.environment.systemPackages
   );
 
@@ -84,9 +84,7 @@ in
     expr = enabledVmwareFusionPackageNames;
     expected = [
       "vmware-fusion-command-line-tools"
-      "vmware-fusion-install"
-      "vmware-fusion-purge"
-      "vmware-fusion-uninstall"
+      "nix-vmware-fusion"
     ];
   };
 
@@ -96,7 +94,7 @@ in
   };
 
   testActivationRunsInstaller = {
-    expr = lib.hasInfix "vmware-fusion-install/bin/vmware-fusion-install" enabledActivation;
+    expr = lib.hasInfix "/bin/nix-vmware-fusion install" enabledActivation;
     expected = true;
   };
 
@@ -113,13 +111,13 @@ in
   };
 
   testCleanupUninstalls = {
-    expr = lib.hasInfix "vmware-fusion-uninstall/bin/vmware-fusion-uninstall" uninstallingActivation;
+    expr = lib.hasInfix "/bin/nix-vmware-fusion uninstall" uninstallingActivation;
     expected = true;
   };
 
   testCleanupPurges = {
     expr =
-      lib.hasInfix "vmware-fusion-purge/bin/vmware-fusion-purge" purgingActivation
+      lib.hasInfix "/bin/nix-vmware-fusion purge" purgingActivation
       && lib.hasInfix "--yes" purgingActivation
       && lib.hasInfix "--user test" purgingActivation;
     expected = true;

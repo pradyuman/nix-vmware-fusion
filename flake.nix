@@ -30,24 +30,17 @@
       localPkgs = import ./pkgs { inherit pkgs; };
     in
     {
+      packages.aarch64-darwin.default = localPkgs.cli;
+
       apps.aarch64-darwin = {
-        install = {
+        default = {
           type = "app";
-          program = nixpkgs.lib.getExe localPkgs.installer;
-        };
-
-        purge = {
-          type = "app";
-          program = nixpkgs.lib.getExe localPkgs.purge;
-        };
-
-        uninstall = {
-          type = "app";
-          program = nixpkgs.lib.getExe localPkgs.uninstaller;
+          program = nixpkgs.lib.getExe localPkgs.cli;
         };
       };
 
       checks.aarch64-darwin = {
+        cli = localPkgs.cli;
         command-line-tools = localPkgs.commandLineTools;
 
         darwin-module =

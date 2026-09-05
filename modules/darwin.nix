@@ -50,8 +50,10 @@ in
   };
 
   config = lib.mkMerge [
-    (lib.mkIf cfg.enable {
+    (lib.mkIf (cfg.enable || cfg.onActivation.cleanup != "none") {
       nixpkgs.config.allowUnfreePackages = [ "vmware-fusion-dmg" ];
+    })
+    (lib.mkIf cfg.enable {
 
       assertions = [
         {
@@ -62,9 +64,7 @@ in
 
       environment.systemPackages = [
         localPkgs.commandLineTools
-        localPkgs.installer
-        localPkgs.purge
-        localPkgs.uninstaller
+        localPkgs.cli
       ];
 
       system.activationScripts.postActivation.text = lib.mkAfter ''
@@ -79,7 +79,7 @@ in
         fi
 
         if [[ "$installed_build" != "${localPkgs.dmg.build}" ]]; then
-          ${lib.getExe localPkgs.installer}
+          ${lib.getExe localPkgs.cli} install
         fi
 
         ${lib.optionalString (cfg.networking.text != null) ''
@@ -98,7 +98,7 @@ in
 
     (lib.mkIf (!cfg.enable && cfg.onActivation.cleanup == "uninstall") {
       system.activationScripts.postActivation.text = lib.mkAfter ''
-        ${lib.getExe localPkgs.uninstaller}
+        ${lib.getExe localPkgs.cli} uninstall
       '';
     })
 
@@ -106,7 +106,7 @@ in
       system.requiresPrimaryUser = [ "programs.vmware-fusion.onActivation.cleanup" ];
 
       system.activationScripts.postActivation.text = lib.mkAfter ''
-        ${lib.getExe localPkgs.purge} \
+        ${lib.getExe localPkgs.cli} purge \
           --yes \
           --user ${lib.escapeShellArg config.system.primaryUser}
       '';

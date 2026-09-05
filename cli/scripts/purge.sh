@@ -1,7 +1,5 @@
-# @describe Remove VMware Fusion and its support files
-# @meta version @vmwareFusionVersion@
-# @flag   --yes         Skip confirmation
-# @option --user <USER> Select the user whose files will be removed
+#!/usr/bin/env bash
+set -euo pipefail
 
 die() {
   echo "$*" >&2
@@ -18,7 +16,8 @@ main() {
   local current_user
   current_user="$(/usr/bin/id -un)"
 
-  local purge_user="${argc_user:-}"
+  local skip_confirmation="${1:?expected confirmation flag}"
+  local purge_user="${2:-}"
 
   if [[ -z "$purge_user" ]]; then
     if (( EUID == 0 )); then
@@ -73,7 +72,7 @@ main() {
   fi
   echo "Existing virtual machine bundles will not be touched."
 
-  if [[ -z "${argc_yes:-}" ]]; then
+  if [[ "$skip_confirmation" != "true" ]]; then
     echo
     if ! gum confirm --default=false "Continue?"; then
       echo "Purge cancelled"
@@ -162,4 +161,4 @@ main() {
   echo "VMware Fusion has been purged"
 }
 
-eval "$(argc --argc-eval "$0" "$@")"
+main "$@"

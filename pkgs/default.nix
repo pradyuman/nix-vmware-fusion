@@ -2,18 +2,11 @@
 
 let
   dmg = pkgs.callPackage ./dmg.nix { };
+  cli = pkgs.callPackage ../cli { inherit dmg; };
 in
 {
-  inherit dmg;
+  inherit dmg cli;
 
   commandLineTools = pkgs.callPackage ./command-line-tools.nix { };
 
-  installer = pkgs.callPackage ./installer.nix {
-    inherit dmg;
-  };
-
-  purge = pkgs.callPackage ./purge {
-    vmwareFusionVersion = dmg.version;
-  };
-  uninstaller = pkgs.callPackage ./uninstaller.nix { };
 }
