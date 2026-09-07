@@ -4,8 +4,8 @@
 }:
 
 let
-  version = "26H1";
-  build = "25388279";
+  version = "26H1u1";
+  build = "25689522";
 
   dmg = requireFile {
     name = "VMware-Fusion-${version}-${build}_universal.dmg";
@@ -13,9 +13,10 @@ let
       let
         params = {
           subFamily = "VMware Fusion";
-          displayGroup = "VMware Fusion ${version}";
+          displayGroup = "VMware Fusion 26H1";
           release = version;
-          servicePk = "543219";
+          os = "";
+          servicePk = "546858";
           language = "EN";
           freeDownloads = "true";
         };
@@ -24,7 +25,7 @@ let
         );
       in
       "https://support.broadcom.com/group/ecx/productfiles?${query}";
-    hash = "sha256-wdNzqiG+JWdOPsxRiBniVXhd6p1FbYdHvLCipZJEvfY=";
+    hash = "sha256-3xkR+N5lGBikPCDKEFRAPafjlTTxWi4OD51B/89yirg=";
   };
 in
 dmg.overrideAttrs (_: {

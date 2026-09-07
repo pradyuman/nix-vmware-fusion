@@ -2,18 +2,18 @@
 
 Manage VMware Fusion on macOS with Nix.
 
-The flake is currently pinned to VMware Fusion `26H1` (build `25388279`) for
+The flake is currently pinned to VMware Fusion `26H1u1` (build `25689522`) for
 Macs with Apple silicon.
 
 ## Install
 
 ### 1. Download VMware Fusion
 
-Sign in to the [VMware Fusion 26H1 downloads page][fusion-downloads] and
+Sign in to the [VMware Fusion 26H1u1 downloads page][fusion-downloads] and
 download this file:
 
 ```text
-VMware-Fusion-26H1-25388279_universal.dmg
+VMware-Fusion-26H1u1-25689522_universal.dmg
 ```
 
 If prompted, review and accept Broadcom's Terms and Conditions and complete the
@@ -28,7 +28,7 @@ explain these steps.
 
 ```sh
 # Replace this path if the DMG is elsewhere.
-dmg="$HOME/Downloads/VMware-Fusion-26H1-25388279_universal.dmg"
+dmg="$HOME/Downloads/VMware-Fusion-26H1u1-25689522_universal.dmg"
 nix store add --mode flat --hash-algo sha256 "$dmg"
 ```
 
@@ -216,5 +216,5 @@ terms, and any conditions shown during download.
 
 [broadcom-download-instructions]: https://knowledge.broadcom.com/external/article/368667/download-and-license-vmware-desktop-hype.html
 [broadcom-licensing]: https://www.broadcom.com/company/legal/licensing
-[fusion-downloads]: https://support.broadcom.com/group/ecx/productfiles?subFamily=VMware%20Fusion&displayGroup=VMware%20Fusion%2026H1&release=26H1&servicePk=543219&language=EN&freeDownloads=true
+[fusion-downloads]: https://support.broadcom.com/group/ecx/productfiles?subFamily=VMware%20Fusion&displayGroup=VMware%20Fusion%2026H1&release=26H1u1&os=&servicePk=546858&language=EN&freeDownloads=true
 [nix-archive-format]: https://nix.dev/manual/nix/latest/protocols/nix-archive
