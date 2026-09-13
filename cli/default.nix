@@ -5,6 +5,7 @@
   bash,
   gum,
   dmg,
+  commandLineTools,
 }:
 
 rustPlatform.buildRustPackage {
@@ -19,7 +20,9 @@ rustPlatform.buildRustPackage {
 
   postInstall = ''
     wrapProgram "$out/bin/nix-vmware-fusion" \
-      --set VMWARE_FUSION_DMG ${lib.escapeShellArg (toString dmg)} \
+      --set NIX_VMWARE_FUSION_DMG ${lib.escapeShellArg (toString dmg)} \
+      --set NIX_VMWARE_FUSION_DICT_TOOL ${lib.escapeShellArg (lib.getExe' commandLineTools "dictTool")} \
+      --set NIX_VMWARE_FUSION_VMCLI ${lib.escapeShellArg (lib.getExe' commandLineTools "vmcli")} \
       --prefix PATH : ${
         lib.makeBinPath [
           bash

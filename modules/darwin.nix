@@ -13,7 +13,7 @@ let
     if cfg.networking.text == null then
       null
     else
-      pkgs.writeText "vmware-fusion-networking" cfg.networking.text;
+      pkgs.writeText "nix-vmware-fusion-networking" cfg.networking.text;
 in
 {
   options.programs.vmware-fusion = {

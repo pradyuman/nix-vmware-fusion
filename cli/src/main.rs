@@ -1,7 +1,13 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use std::env;
-use std::process::{Command, ExitCode};
+use std::path::PathBuf;
+use std::process::ExitCode;
+
+use crate::config::CONFIG;
+
+mod config;
+mod script;
+mod vm;
 
 #[derive(Parser)]
 #[command(version, about = "Manage VMware Fusion")]
@@ -12,6 +18,12 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
+    /// Create or update virtual machines
+    Vm {
+        #[command(subcommand)]
+        command: VmCommands,
+    },
+
     /// Install VMware Fusion
     Install,
 
@@ -30,31 +42,32 @@ enum Commands {
     },
 }
 
-fn shell(name: &str, contents: &str) -> Command {
-    let mut command = Command::new("bash");
-    command.args(["-c", contents, name]);
-    command
+#[derive(Subcommand)]
+enum VmCommands {
+    /// Apply a virtual machine configuration from a JSON file
+    Apply { file: PathBuf },
 }
 
 fn main() -> Result<ExitCode> {
-    let mut command = match Cli::parse().command {
-        Commands::Install => {
-            let dmg = env::var_os("VMWARE_FUSION_DMG").ok_or(env::VarError::NotPresent)?;
-            let mut command = shell("install.sh", include_str!("../scripts/install.sh"));
-            command.arg(dmg);
-            command
+    match Cli::parse().command {
+        Commands::Vm {
+            command: VmCommands::Apply { file },
+        } => {
+            vm::apply(&file)?;
+            Ok(ExitCode::SUCCESS)
         }
-        Commands::Uninstall => shell("uninstall.sh", include_str!("../scripts/uninstall.sh")),
-        Commands::Purge { yes, user } => {
-            let mut command = shell("purge.sh", include_str!("../scripts/purge.sh"));
-            command.arg(yes.to_string());
-            command.arg(user.unwrap_or_default());
-            command
+        Commands::Install => script::run(
+            "install.sh",
+            include_str!("../scripts/install.sh"),
+            &[CONFIG.dmg.as_os_str().to_owned()],
+        ),
+        Commands::Uninstall => {
+            script::run("uninstall.sh", include_str!("../scripts/uninstall.sh"), &[])
         }
-    };
-
-    let status = command.status()?;
-    Ok(status
-        .code()
-        .map_or(ExitCode::FAILURE, |code| ExitCode::from(code as u8)))
+        Commands::Purge { yes, user } => script::run(
+            "purge.sh",
+            include_str!("../scripts/purge.sh"),
+            &[yes.to_string().into(), user.unwrap_or_default().into()],
+        ),
+    }
 }

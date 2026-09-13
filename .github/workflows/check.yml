@@ -35,3 +35,6 @@ jobs:
 
       - name: Test Home Manager module
         run: nix build --no-link -L .#checks.aarch64-darwin.home-module
+
+      - name: Test Rust CLI
+        run: cargo test --locked --manifest-path cli/Cargo.toml

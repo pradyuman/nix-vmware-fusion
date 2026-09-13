@@ -2,11 +2,9 @@
 
 let
   dmg = pkgs.callPackage ./dmg.nix { };
-  cli = pkgs.callPackage ../cli { inherit dmg; };
+  commandLineTools = pkgs.callPackage ./command-line-tools.nix { };
+  cli = pkgs.callPackage ../cli { inherit dmg commandLineTools; };
 in
 {
-  inherit dmg cli;
-
-  commandLineTools = pkgs.callPackage ./command-line-tools.nix { };
-
+  inherit dmg cli commandLineTools;
 }

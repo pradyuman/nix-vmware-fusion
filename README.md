@@ -141,6 +141,34 @@ unchanged.
 Quit VMware Fusion before activating your Home Manager configuration, then
 reopen it afterward so the new settings take effect.
 
+## Manage virtual machines
+
+To create a VM or configure an existing one, use the Home Manager module:
+
+```nix
+programs.vmware-fusion = {
+  enable = true;
+  virtualMachines.asuna = {
+    guestOS = "arm-other6xlinux-64";
+    vcpus = 2;
+    memory = 8192;
+    secureBoot = false;
+  };
+};
+```
+
+By default, the module creates or updates
+`~/Virtual Machines.localized/<name>.vmwarevm`,
+where `<name>` is the attribute name (`asuna` above). Use `path` to specify a
+different location.
+
+The module only manages virtual machines listed in your configuration and
+leaves any others on your system untouched. If you remove a virtual machine
+from your configuration, the module stops managing it (but doesn't delete it).
+
+> [!IMPORTANT]
+> `nix-vmware-fusion` will return an error if it tries to change the configuration of a running virtual machine. Make sure to shut down any virtual machines you're changing before activating a new configuration.
+
 ## Remove VMware Fusion
 
 ### Uninstall

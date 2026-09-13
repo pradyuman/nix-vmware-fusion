@@ -9,7 +9,10 @@ let
   cfg = config.programs.vmware-fusion;
 in
 {
-  imports = [ ./settings ];
+  imports = [
+    ./settings
+    ./virtual-machines.nix
+  ];
 
   options.programs.vmware-fusion.enable = lib.mkEnableOption "VMware Fusion";
 
