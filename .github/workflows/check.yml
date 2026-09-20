@@ -24,17 +24,5 @@ jobs:
       - name: Install Nix
         uses: cachix/install-nix-action@630ae543ea3a38a9a4166f03376c02c50f408342 # v31.11.0
 
-      - name: Check formatting
-        run: nix fmt -- --ci
-
-      - name: Build command-line tools
-        run: nix build --no-link -L .#checks.aarch64-darwin.command-line-tools
-
-      - name: Test Darwin module
-        run: nix build --no-link -L .#checks.aarch64-darwin.darwin-module
-
-      - name: Test Home Manager module
-        run: nix build --no-link -L .#checks.aarch64-darwin.home-module
-
-      - name: Test Rust CLI
-        run: cargo test --locked --manifest-path cli/Cargo.toml
+      - name: Check flake
+        run: nix flake check -L

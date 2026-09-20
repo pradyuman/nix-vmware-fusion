@@ -3,6 +3,7 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    flake-parts.url = "github:hercules-ci/flake-parts";
     nix-darwin = {
       url = "github:nix-darwin/nix-darwin";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -15,70 +16,49 @@
       url = "github:numtide/treefmt-nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    crane.url = "github:ipetkov/crane";
   };
 
   outputs =
-    {
-      nix-darwin,
-      home-manager,
-      nixpkgs,
+    inputs@{
+      flake-parts,
       treefmt-nix,
       ...
     }:
-    let
-      pkgs = nixpkgs.legacyPackages.aarch64-darwin;
-      localPkgs = import ./pkgs { inherit pkgs; };
-    in
-    {
-      packages.aarch64-darwin.default = localPkgs.cli;
+    flake-parts.lib.mkFlake { inherit inputs; } {
+      imports = [
+        treefmt-nix.flakeModule
+        ./tests
+      ];
 
-      apps.aarch64-darwin = {
-        default = {
-          type = "app";
-          program = nixpkgs.lib.getExe localPkgs.cli;
-        };
-      };
+      systems = [ "aarch64-darwin" ];
 
-      checks.aarch64-darwin = {
-        cli = localPkgs.cli;
-        command-line-tools = localPkgs.commandLineTools;
-
-        darwin-module =
-          pkgs.runCommand "darwin-module-tests"
-            {
-              nativeBuildInputs = [ pkgs.nix-unit ];
-            }
-            ''
-              nix-unit \
-                --arg nixpkgs '${nixpkgs}' \
-                --arg nixDarwin '${nix-darwin}' \
-                ${./.}/tests/modules/darwin.nix
-              touch "$out"
-            '';
-
-        home-module =
-          pkgs.runCommand "home-module-tests"
-            {
-              nativeBuildInputs = [ pkgs.nix-unit ];
-            }
-            ''
-              nix-unit \
-                --arg homeManager '${home-manager}' \
-                --arg nixpkgs '${nixpkgs}' \
-                ${./.}/tests/modules/home-manager.nix
-              touch "$out"
-            '';
-      };
-
-      darwinModules.default = ./modules/darwin.nix;
-
-      homeModules.default = ./modules/home-manager;
-
-      formatter.aarch64-darwin =
+      perSystem =
+        {
+          pkgs,
+          system,
+          ...
+        }:
         let
-          treefmt = treefmt-nix.lib.evalModule pkgs {
+          localPkgs = import ./pkgs { inherit pkgs; };
+        in
+        {
+          _module.args.pkgs = import inputs.nixpkgs {
+            inherit system;
+            config.allowUnfreePredicate = package: inputs.nixpkgs.lib.getName package == "vmware-fusion-dmg";
+          };
+
+          packages.default = localPkgs.cli;
+
+          apps.default = {
+            type = "app";
+            program = pkgs.lib.getExe localPkgs.cli;
+          };
+
+          treefmt = {
             projectRootFile = "flake.nix";
             programs = {
+              actionlint.enable = true;
               mdformat = {
                 enable = true;
                 plugins = ps: [
@@ -88,9 +68,18 @@
                 settings.number = true;
               };
               nixfmt.enable = true;
+              rustfmt = {
+                enable = true;
+                edition = "2024";
+              };
+              shellcheck.enable = true;
             };
           };
-        in
-        treefmt.config.build.wrapper;
+        };
+
+      flake = {
+        darwinModules.default = ./modules/darwin.nix;
+        homeModules.default = ./modules/home-manager;
+      };
     };
 }
