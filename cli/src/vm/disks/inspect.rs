@@ -4,9 +4,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::config::CONFIG;
-use crate::vm::schema::VirtualMachine;
+use crate::vm::schema::VirtualDisks;
 
-use super::{AttachedDisk, DeclaredDisk, Snapshot};
+use super::{AttachedDisk, ConfiguredDisk, Snapshot};
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -21,10 +21,9 @@ struct QueriedDisk {
     backing_path_name: PathBuf,
 }
 
-pub(crate) fn inspect(schema: &VirtualMachine, vmx_path: &Path) -> Result<Snapshot> {
+pub(crate) fn inspect(disks: &VirtualDisks, vmx_path: &Path) -> Result<Snapshot> {
     // Canonicalize paths so equivalent paths and symlinks identify the same disk
-    let declared_disks = schema
-        .disks
+    let configured_disks = disks
         .values()
         .map(|disk| {
             let path = disk.path.as_ref();
@@ -37,7 +36,7 @@ pub(crate) fn inspect(schema: &VirtualMachine, vmx_path: &Path) -> Result<Snapsh
                 path.display()
             );
 
-            Ok(DeclaredDisk {
+            Ok(ConfiguredDisk {
                 path: path.clone(),
                 bus: disk.bus,
                 canonical_path: fs::canonicalize(path)?,
@@ -46,7 +45,7 @@ pub(crate) fn inspect(schema: &VirtualMachine, vmx_path: &Path) -> Result<Snapsh
         .collect::<Result<Vec<_>>>()?;
 
     Ok(Snapshot {
-        declared_disks,
+        configured_disks,
         attached_disks: query_attached_disks(vmx_path)?,
     })
 }
@@ -82,4 +81,72 @@ fn canonicalize_if_exists(path: &Path) -> Result<Option<PathBuf>> {
     } else {
         None
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use std::os::unix::fs::symlink;
+
+    use crate::vm::schema::{VirtualDisk, VirtualDiskBus, VirtualDiskPath};
+
+    use super::*;
+
+    fn disks(path: PathBuf) -> VirtualDisks {
+        VirtualDisks::from([(
+            "disk".to_owned(),
+            VirtualDisk {
+                path: VirtualDiskPath::try_new(path).expect("valid disk path"),
+                bus: VirtualDiskBus::Nvme,
+            },
+        )])
+    }
+
+    #[test]
+    fn configured_disk_is_canonicalized() -> Result<()> {
+        let temp_dir = tempfile::tempdir()?;
+        let disk_path = temp_dir.path().join("system.vmdk");
+        let alias_path = temp_dir.path().join("alias.vmdk");
+        let vmx_path = temp_dir.path().join("example.vmx");
+
+        fs::write(&disk_path, "")?;
+        symlink(&disk_path, &alias_path)?;
+
+        let snapshot = inspect(&disks(alias_path.clone()), &vmx_path)?;
+
+        assert_eq!(snapshot.configured_disks.len(), 1);
+        assert_eq!(snapshot.configured_disks[0].path, alias_path);
+        assert_eq!(
+            snapshot.configured_disks[0].canonical_path,
+            fs::canonicalize(disk_path)?
+        );
+        assert!(snapshot.attached_disks.is_empty());
+
+        Ok(())
+    }
+
+    #[test]
+    fn missing_configured_disk_is_rejected() {
+        let temp_dir = tempfile::tempdir().expect("temporary directory");
+        let disk_path = temp_dir.path().join("missing.vmdk");
+        let vmx_path = temp_dir.path().join("example.vmx");
+
+        let error = inspect(&disks(disk_path), &vmx_path).expect_err("missing disk should fail");
+
+        assert!(error.to_string().contains("could not inspect disk"));
+    }
+
+    #[test]
+    fn configured_disk_directory_is_rejected() -> Result<()> {
+        let temp_dir = tempfile::tempdir()?;
+        let disk_path = temp_dir.path().join("directory.vmdk");
+        let vmx_path = temp_dir.path().join("example.vmx");
+
+        fs::create_dir(&disk_path)?;
+
+        let error = inspect(&disks(disk_path), &vmx_path).expect_err("disk directory should fail");
+
+        assert!(error.to_string().contains("disk path is not a file"));
+
+        Ok(())
+    }
 }

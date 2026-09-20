@@ -3,7 +3,7 @@ use serde::Deserialize;
 use std::path::Path;
 
 use crate::config::CONFIG;
-use crate::vm::schema::DiskBus;
+use crate::vm::schema::VirtualDiskBus;
 
 use super::{Action, DiskLabel, Plan};
 
@@ -62,10 +62,10 @@ pub(crate) fn stage(draft_path: &Path, plan: Plan) -> Result<()> {
     })
 }
 
-fn find_first_free(draft_path: &Path, bus: DiskBus) -> Result<DiskLabel> {
+fn find_first_free(draft_path: &Path, bus: VirtualDiskBus) -> Result<DiskLabel> {
     let (module, controller) = match bus {
-        DiskBus::Nvme => ("nvme", "nvme0"),
-        DiskBus::Sata => ("sata", "sata0"),
+        VirtualDiskBus::Nvme => ("nvme", "nvme0"),
+        VirtualDiskBus::Sata => ("sata", "sata0"),
     };
 
     duct::cmd!(

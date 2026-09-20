@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use crate::vm::schema::DiskBus;
+use crate::vm::schema::VirtualDiskBus;
 
 mod inspect;
 pub(crate) use inspect::inspect;
@@ -15,17 +15,20 @@ pub(crate) type DiskLabel = String;
 
 // Inspect
 
+#[derive(Debug)]
 pub(crate) struct Snapshot {
-    pub declared_disks: Vec<DeclaredDisk>,
+    pub configured_disks: Vec<ConfiguredDisk>,
     pub attached_disks: Vec<AttachedDisk>,
 }
 
-pub(crate) struct DeclaredDisk {
+#[derive(Debug)]
+pub(crate) struct ConfiguredDisk {
     pub path: PathBuf,
-    pub bus: DiskBus,
+    pub bus: VirtualDiskBus,
     pub canonical_path: PathBuf,
 }
 
+#[derive(Debug)]
 pub(crate) struct AttachedDisk {
     pub label: DiskLabel,
     pub canonical_path: Option<PathBuf>,
@@ -33,12 +36,14 @@ pub(crate) struct AttachedDisk {
 
 // Plan
 
+#[derive(Debug)]
 pub(crate) struct Plan {
     pub actions: Vec<Action>,
 }
 
+#[derive(Debug)]
 pub(crate) enum Action {
-    Move { from: DiskLabel, to: DiskBus },
-    Attach { path: PathBuf, to: DiskBus },
+    Move { from: DiskLabel, to: VirtualDiskBus },
+    Attach { path: PathBuf, to: VirtualDiskBus },
     Detach { label: DiskLabel },
 }

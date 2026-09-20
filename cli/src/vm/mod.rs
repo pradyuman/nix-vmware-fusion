@@ -15,7 +15,7 @@ pub(crate) struct Snapshot {
 
 fn inspect(schema: &schema::VirtualMachine) -> Result<Snapshot> {
     let vmx = vmx::inspect(schema.path.as_ref())?;
-    let disks = disks::inspect(schema, &vmx.target_path)?;
+    let disks = disks::inspect(&schema.disks, &vmx.target_path)?;
 
     Ok(Snapshot { vmx, disks })
 }

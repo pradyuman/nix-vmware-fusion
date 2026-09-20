@@ -12,6 +12,7 @@ pub(crate) use stage::stage;
 
 // Inspect
 
+#[derive(Debug)]
 pub(crate) struct Snapshot {
     pub target_path: PathBuf,
     raw_contents: Option<String>,

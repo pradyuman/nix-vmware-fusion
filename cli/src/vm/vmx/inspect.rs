@@ -123,9 +123,7 @@ mod tests {
         fs::write(temp_dir.path().join("first.vmx"), "")?;
         fs::write(temp_dir.path().join("second.vmx"), "")?;
 
-        let error = inspect(temp_dir.path())
-            .err()
-            .expect("multiple VMX files should fail");
+        let error = inspect(temp_dir.path()).expect_err("multiple VMX files should fail");
 
         assert!(error.to_string().contains("multiple VMX files found"));
 
