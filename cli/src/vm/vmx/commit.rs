@@ -9,7 +9,7 @@ use crate::config::CONFIG;
 use super::StagedChange;
 
 impl StagedChange {
-    pub fn commit(self) -> Result<()> {
+    pub(crate) fn commit(self) -> Result<()> {
         let bundle_path = self
             .snapshot
             .target_path
@@ -24,7 +24,7 @@ impl StagedChange {
 
         // Atomically save the VMX contents
         let mut file = AtomicWriteFile::open(&self.snapshot.target_path)?;
-        file.write_all(self.contents.as_bytes())?;
+        file.write_all(self.updated_contents.as_bytes())?;
         file.commit()?;
 
         Ok(())

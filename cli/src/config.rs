@@ -3,11 +3,11 @@ use serde::Deserialize;
 use std::path::PathBuf;
 use std::sync::LazyLock;
 
-pub static CONFIG: LazyLock<Config> =
+pub(crate) static CONFIG: LazyLock<Config> =
     LazyLock::new(|| Config::load().expect("could not load configuration"));
 
 #[derive(Debug, Deserialize)]
-pub struct Config {
+pub(crate) struct Config {
     pub dmg: PathBuf,
     pub dict_tool: PathBuf,
     pub vmcli: PathBuf,

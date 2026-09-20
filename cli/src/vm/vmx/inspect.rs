@@ -5,16 +5,17 @@ use std::path::{Path, PathBuf};
 
 use super::Snapshot;
 
-pub fn inspect(bundle_path: &Path) -> Result<Snapshot> {
+pub(crate) fn inspect(bundle_path: &Path) -> Result<Snapshot> {
     let target_path = resolve_path(bundle_path)?;
-    let contents = target_path
+
+    let raw_contents = target_path
         .try_exists()?
         .then(|| fs::read_to_string(&target_path))
         .transpose()?;
 
     Ok(Snapshot {
         target_path,
-        contents,
+        raw_contents,
     })
 }
 
@@ -61,7 +62,7 @@ mod tests {
 
         let snapshot = inspect(&bundle_path)?;
 
-        assert_eq!(snapshot.contents, None);
+        assert_eq!(snapshot.raw_contents, None);
         assert!(!bundle_path.try_exists()?);
 
         Ok(())
@@ -77,7 +78,7 @@ mod tests {
         let snapshot = inspect(&bundle_path)?;
 
         assert_eq!(snapshot.target_path, bundle_path.join("example.vmx"));
-        assert_eq!(snapshot.contents, None);
+        assert_eq!(snapshot.raw_contents, None);
         assert!(!snapshot.target_path.try_exists()?);
 
         Ok(())
@@ -94,7 +95,7 @@ mod tests {
         let snapshot = inspect(temp_dir.path())?;
 
         assert_eq!(snapshot.target_path, target_path);
-        assert_eq!(snapshot.contents.as_deref(), Some(contents));
+        assert_eq!(snapshot.raw_contents.as_deref(), Some(contents));
 
         Ok(())
     }

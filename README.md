@@ -153,6 +153,9 @@ programs.vmware-fusion = {
     vcpus = 2;
     memory = 8192;
     secureBoot = false;
+    disks.primary = {
+      bus = "nvme";
+    };
   };
 };
 ```
@@ -167,7 +170,37 @@ leaves any others on your system untouched. If you remove a virtual machine
 from your configuration, the module stops managing it (but doesn't delete it).
 
 > [!IMPORTANT]
-> `nix-vmware-fusion` will return an error if it tries to change the configuration of a running virtual machine. Make sure to shut down any virtual machines you're changing before activating a new configuration.
+> `nix-vmware-fusion` will return an error if it tries to change the
+> configuration of a running virtual machine. Make sure to shut down any
+> virtual machines you're changing before activating a new configuration.
+
+### Virtual disks
+
+Declare every virtual disk that should be attached to the VM:
+
+```nix
+programs.vmware-fusion.virtualMachines.asuna = {
+  # ...
+  disks = {
+    primary = {
+      bus = "nvme";
+    };
+  };
+};
+```
+
+By default, the module uses `<bundle>/<name>.vmdk` for the path and NVMe for the
+bus, where `<name>` is the attribute name (`primary` above). Use `path` to
+specify a different location or `bus` to use SATA.
+
+Removing a disk declaration will detach it from the VM without deleting its
+files.
+
+> [!NOTE]
+> When adding an existing VM to your configuration, make sure to declare any
+> existing disks unless you want them detached.
+>
+> Also, disk creation and resizing are not currently supported.
 
 ## Remove VMware Fusion
 

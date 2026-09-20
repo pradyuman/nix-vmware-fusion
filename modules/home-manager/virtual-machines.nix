@@ -7,9 +7,10 @@
 
 let
   cfg = config.programs.vmware-fusion;
+  homeDirectory = config.home.homeDirectory;
 
   virtualMachineModule =
-    { name, ... }:
+    { name, config, ... }:
     {
       options = {
         displayName = lib.mkOption {
@@ -20,7 +21,7 @@ let
 
         path = lib.mkOption {
           type = lib.types.str;
-          default = "${config.home.homeDirectory}/Virtual Machines.localized/${name}.vmwarevm";
+          default = "${homeDirectory}/Virtual Machines.localized/${name}.vmwarevm";
           description = "Path to the virtual machine bundle.";
         };
 
@@ -45,6 +46,32 @@ let
         secureBoot = lib.mkOption {
           type = lib.types.bool;
           description = "Whether to enable UEFI Secure Boot.";
+        };
+
+        disks = lib.mkOption {
+          default = { };
+          description = "Virtual disks attached to the VM. Undeclared disks will be detached without deleting their files.";
+          type = lib.types.attrsOf (
+            lib.types.submodule (
+              { name, ... }: {
+                options = {
+                  path = lib.mkOption {
+                    type = lib.types.str;
+                    default = "${config.path}/${name}.vmdk";
+                    description = "Absolute path to the virtual disk.";
+                  };
+                  bus = lib.mkOption {
+                    type = lib.types.enum [
+                      "nvme"
+                      "sata"
+                    ];
+                    default = "nvme";
+                    description = "Virtual disk bus type.";
+                  };
+                };
+              }
+            )
+          );
         };
       };
     };

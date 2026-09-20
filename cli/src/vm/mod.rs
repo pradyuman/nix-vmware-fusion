@@ -1,21 +1,88 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use std::fs;
 use std::path::Path;
 
+mod disks;
 mod schema;
 mod vmx;
 
-pub fn apply(file: &Path) -> Result<()> {
-    let contents = fs::read_to_string(file)?;
-    let schema = serde_json::from_str::<schema::VirtualMachine>(&contents)?;
-    let bundle_path = schema.path.as_ref();
+// Inspect
 
-    let snapshot = vmx::inspect(bundle_path)?;
-    let staged = vmx::stage(&schema, snapshot)?;
+pub(crate) struct Snapshot {
+    vmx: vmx::Snapshot,
+    disks: disks::Snapshot,
+}
 
-    if !staged.is_noop() {
-        staged.commit()?;
+fn inspect(schema: &schema::VirtualMachine) -> Result<Snapshot> {
+    let vmx = vmx::inspect(schema.path.as_ref())?;
+    let disks = disks::inspect(schema, &vmx.target_path)?;
+
+    Ok(Snapshot { vmx, disks })
+}
+
+// Plan
+
+pub(crate) struct Plan {
+    vmx: vmx::Plan,
+    disks: disks::Plan,
+}
+
+fn plan(schema: &schema::VirtualMachine, snapshot: Snapshot) -> Result<Plan> {
+    let disks = disks::plan(snapshot.disks)?;
+    let vmx = vmx::plan(schema, snapshot.vmx);
+
+    Ok(Plan { vmx, disks })
+}
+
+// Stage
+
+pub(crate) struct StagedChange {
+    vmx: vmx::StagedChange,
+}
+
+fn stage(plan: Plan) -> Result<StagedChange> {
+    let Plan { vmx, disks } = plan;
+    let temp_dir = tempfile::tempdir()?;
+    let filename = vmx
+        .snapshot
+        .target_path
+        .file_name()
+        .context("missing VMX filename")?;
+    let draft_path = temp_dir.path().join(filename);
+
+    vmx::stage(&draft_path, &vmx)?;
+    disks::stage(&draft_path, disks)?;
+
+    // Carry only the completed VMX forward and discard temporary baseline files
+    let updated_contents = fs::read_to_string(&draft_path)?;
+
+    Ok(StagedChange {
+        vmx: vmx::StagedChange {
+            snapshot: vmx.snapshot,
+            updated_contents,
+        },
+    })
+}
+
+// Commit
+
+fn commit(staged: StagedChange) -> Result<()> {
+    if !staged.vmx.is_noop() {
+        staged.vmx.commit()?;
     }
 
     Ok(())
+}
+
+// Apply
+
+pub(crate) fn apply(file: &Path) -> Result<()> {
+    let contents = fs::read_to_string(file)?;
+    let schema = serde_json::from_str::<schema::VirtualMachine>(&contents)?;
+
+    let snapshot = inspect(&schema)?;
+    let plan = plan(&schema, snapshot)?;
+    let staged = stage(plan)?;
+
+    commit(staged)
 }
