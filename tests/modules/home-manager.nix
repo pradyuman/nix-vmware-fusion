@@ -6,7 +6,20 @@
 let
   lib = import "${nixpkgs}/lib";
   homeManagerLib = import "${homeManager}/lib" { inherit lib; };
-  pkgs = import nixpkgs { localSystem = "aarch64-darwin"; };
+  pkgs = import nixpkgs {
+    localSystem = "aarch64-darwin";
+
+    # Evaluate the module without requiring the proprietary DMG.
+    overlays = [
+      (_final: prev: {
+        requireFile =
+          _:
+          prev.runCommand "mock-vmware-fusion-dmg" { } ''
+            touch "$out"
+          '';
+      })
+    ];
+  };
 
   mkHome =
     vmwareFusionConfig:
@@ -55,12 +68,25 @@ let
       "vmplayer.exit.vmAction" = "suspend";
     };
   };
+  virtualMachineHome = mkHome {
+    enable = true;
+    virtualMachines.asuna = {
+      guestOS = "arm-other6xlinux-64";
+      vcpus = 4;
+      memory = 8192;
+      secureBoot = true;
+      disks.primary.size = 64;
+    };
+  };
 
   getActivation = home: home.config.home.activation.vmwareFusionPreferences.data;
 
   configuredActivation = getActivation configuredHome;
   automaticGamingActivation = getActivation automaticGamingHome;
   overriddenActivation = getActivation overriddenHome;
+  asuna = virtualMachineHome.config.programs.vmware-fusion.virtualMachines.asuna;
+  virtualMachineActivation =
+    virtualMachineHome.config.home.activation.vmwareFusionVirtualMachines.data;
 in
 {
   testDisabledByDefault = {
@@ -117,5 +143,29 @@ in
         settings.appearance = "sepia";
       }).config.programs.vmware-fusion.settings.appearance;
     expectedError.type = "ThrownError";
+  };
+
+  testVirtualMachineDefaults = {
+    expr = asuna;
+    expected = {
+      displayName = "asuna";
+      path = "/Users/test/Virtual Machines.localized/asuna.vmwarevm";
+      guestOS = "arm-other6xlinux-64";
+      vcpus = 4;
+      memory = 8192;
+      secureBoot = true;
+      disks.primary = {
+        path = "/Users/test/Virtual Machines.localized/asuna.vmwarevm/primary.vmdk";
+        size = 64;
+        bus = "nvme";
+      };
+    };
+  };
+
+  testVirtualMachineActivation = {
+    expr =
+      lib.hasInfix "/bin/nix-vmware-fusion vm apply" virtualMachineActivation
+      && lib.hasInfix "nix-vmware-fusion-asuna-ir.json" virtualMachineActivation;
+    expected = true;
   };
 }
