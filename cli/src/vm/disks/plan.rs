@@ -1,9 +1,12 @@
-use anyhow::{Result, ensure};
+use anyhow::{Context, Result, bail, ensure};
+use std::cmp::Ordering;
 use std::collections::HashSet;
 
 use crate::vm::schema::VirtualDiskBus;
 
-use super::{Action, Plan, Snapshot};
+use super::{Action, ConfiguredDisk, Plan, Snapshot};
+
+const BYTES_PER_GIB: u64 = 1024_u64.pow(3);
 
 pub(crate) fn plan(snapshot: Snapshot) -> Result<Plan> {
     let canonical_paths = snapshot
@@ -51,10 +54,38 @@ pub(crate) fn plan(snapshot: Snapshot) -> Result<Plan> {
             label: attached.label.clone(),
         });
 
+    let expansions = snapshot
+        .configured_disks
+        .iter()
+        .map(plan_expansion)
+        .filter_map(Result::transpose)
+        .collect::<Result<Vec<_>>>()?;
+
     // Detach unconfigured disks first so moves and attachments can reuse their labels
     Ok(Plan {
-        actions: unconfigured.chain(configured).collect(),
+        actions: unconfigured.chain(configured).chain(expansions).collect(),
     })
+}
+
+fn plan_expansion(disk: &ConfiguredDisk) -> Result<Option<Action>> {
+    let requested_bytes = disk
+        .size
+        .get()
+        .checked_mul(BYTES_PER_GIB)
+        .context("configured disk capacity is too large")?;
+
+    match requested_bytes.cmp(&disk.current_bytes.get()) {
+        Ordering::Less => bail!(
+            "cannot resize disk {} below its current capacity (requested: {} GiB)",
+            disk.path.display(),
+            disk.size
+        ),
+        Ordering::Greater => Ok(Some(Action::Expand {
+            path: disk.path.clone(),
+            size: disk.size,
+        })),
+        Ordering::Equal => Ok(None),
+    }
 }
 
 fn bus_from_label(label: &str) -> Option<VirtualDiskBus> {
@@ -69,6 +100,7 @@ fn bus_from_label(label: &str) -> Option<VirtualDiskBus> {
 
 #[cfg(test)]
 mod tests {
+    use std::num::NonZeroU64;
     use std::path::Path;
 
     use crate::vm::disks::{AttachedDisk, ConfiguredDisk};
@@ -86,8 +118,21 @@ mod tests {
     ) -> ConfiguredDisk {
         ConfiguredDisk {
             path: path.into(),
+            size: NonZeroU64::new(8).expect("non-zero disk capacity"),
+            current_bytes: NonZeroU64::new(8 * BYTES_PER_GIB)
+                .expect("non-zero current disk capacity"),
             bus,
             canonical_path: canonical_path.into(),
+        }
+    }
+
+    fn configured_with_capacity(path: &str, size: u64, current_bytes: u64) -> ConfiguredDisk {
+        ConfiguredDisk {
+            path: path.into(),
+            size: NonZeroU64::new(size).expect("non-zero disk capacity"),
+            current_bytes: NonZeroU64::new(current_bytes).expect("non-zero current disk capacity"),
+            bus: VirtualDiskBus::Nvme,
+            canonical_path: path.into(),
         }
     }
 
@@ -254,5 +299,54 @@ mod tests {
         ));
 
         Ok(())
+    }
+
+    #[test]
+    fn smaller_disk_is_expanded_to_configured_capacity() -> Result<()> {
+        let disk_path = "/disks/system.vmdk";
+        let snapshot = Snapshot {
+            configured_disks: vec![configured_with_capacity(disk_path, 16, 8 * BYTES_PER_GIB)],
+            attached_disks: vec![attached(disk_path, "nvme0:0")],
+        };
+
+        let plan = plan(snapshot)?;
+
+        assert!(matches!(
+            plan.actions.as_slice(),
+            [Action::Expand { path, size }]
+                if path.as_path() == Path::new(disk_path) && size.get() == 16
+        ));
+
+        Ok(())
+    }
+
+    #[test]
+    fn disk_at_configured_capacity_is_unchanged() -> Result<()> {
+        let disk_path = "/disks/system.vmdk";
+        let snapshot = Snapshot {
+            configured_disks: vec![configured_with_capacity(disk_path, 8, 8 * BYTES_PER_GIB)],
+            attached_disks: vec![attached(disk_path, "nvme0:0")],
+        };
+
+        let plan = plan(snapshot)?;
+
+        assert!(plan.actions.is_empty());
+
+        Ok(())
+    }
+
+    #[test]
+    fn shrinking_disk_is_rejected() {
+        let disk_path = "/disks/system.vmdk";
+        let snapshot = Snapshot {
+            configured_disks: vec![configured_with_capacity(disk_path, 8, 16 * BYTES_PER_GIB)],
+            attached_disks: vec![attached(disk_path, "nvme0:0")],
+        };
+
+        let error = plan(snapshot).expect_err("shrinking disk should fail");
+
+        assert!(error.to_string().contains(&format!(
+            "cannot resize disk {disk_path} below its current capacity"
+        )));
     }
 }

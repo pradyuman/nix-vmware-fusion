@@ -2,6 +2,8 @@ use anyhow::{Context, Result};
 use std::fs;
 use std::path::Path;
 
+use crate::config::CONFIG;
+
 mod disks;
 mod schema;
 mod vmx;
@@ -38,6 +40,7 @@ fn plan(schema: &schema::VirtualMachine, snapshot: Snapshot) -> Result<Plan> {
 
 pub(crate) struct StagedChange {
     vmx: vmx::StagedChange,
+    disks: disks::StagedChange,
 }
 
 fn stage(plan: Plan) -> Result<StagedChange> {
@@ -51,7 +54,7 @@ fn stage(plan: Plan) -> Result<StagedChange> {
     let draft_path = temp_dir.path().join(filename);
 
     vmx::stage(&draft_path, &vmx)?;
-    disks::stage(&draft_path, disks)?;
+    let disks = disks::stage(&draft_path, disks)?;
 
     // Carry only the completed VMX forward and discard temporary baseline files
     let updated_contents = fs::read_to_string(&draft_path)?;
@@ -61,15 +64,50 @@ fn stage(plan: Plan) -> Result<StagedChange> {
             snapshot: vmx.snapshot,
             updated_contents,
         },
+        disks,
     })
 }
 
 // Commit
 
 fn commit(staged: StagedChange) -> Result<()> {
-    if !staged.vmx.is_noop() {
+    let vmx_changed = !staged.vmx.is_noop();
+    let disks_changed = !staged.disks.is_noop();
+
+    if vmx_changed || disks_changed {
+        ensure_stopped(&staged.vmx.snapshot.target_path)?;
+    }
+    if disks_changed {
+        staged.disks.commit()?;
+    }
+    if vmx_changed {
         staged.vmx.commit()?;
     }
+
+    Ok(())
+}
+
+fn ensure_stopped(vmx_path: &Path) -> Result<()> {
+    if !vmx_path.try_exists()? {
+        return Ok(());
+    }
+
+    let bundle_path = vmx_path.parent().context("missing VMX directory")?;
+    let power = duct::cmd!(&CONFIG.vmcli, vmx_path, "power", "query")
+        .read()
+        .context("could not query virtual machine power state")?;
+
+    let state = power
+        .lines()
+        .find_map(|line| line.strip_prefix("PowerState:"))
+        .map(str::trim)
+        .context("vmcli did not report a power state")?;
+
+    anyhow::ensure!(
+        state == "off",
+        "{} must be fully shut down before applying changes (current power state: {state})",
+        bundle_path.display()
+    );
 
     Ok(())
 }

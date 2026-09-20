@@ -22,6 +22,8 @@ rustPlatform.buildRustPackage {
     wrapProgram "$out/bin/nix-vmware-fusion" \
       --set NIX_VMWARE_FUSION_DMG ${lib.escapeShellArg (toString dmg)} \
       --set NIX_VMWARE_FUSION_DICT_TOOL ${lib.escapeShellArg (lib.getExe' commandLineTools "dictTool")} \
+      --set NIX_VMWARE_FUSION_VDISK_MANAGER ${lib.escapeShellArg (lib.getExe' commandLineTools "vmware-vdiskmanager")} \
+      --set NIX_VMWARE_FUSION_VMDK_SERVER ${lib.escapeShellArg (lib.getExe' commandLineTools "vmware-vmdkserver")} \
       --set NIX_VMWARE_FUSION_VMCLI ${lib.escapeShellArg (lib.getExe' commandLineTools "vmcli")} \
       --prefix PATH : ${
         lib.makeBinPath [

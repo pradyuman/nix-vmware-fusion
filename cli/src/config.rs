@@ -10,6 +10,8 @@ pub(crate) static CONFIG: LazyLock<Config> =
 pub(crate) struct Config {
     pub dmg: PathBuf,
     pub dict_tool: PathBuf,
+    pub vdisk_manager: PathBuf,
+    pub vmdk_server: PathBuf,
     pub vmcli: PathBuf,
 }
 

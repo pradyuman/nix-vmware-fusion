@@ -154,6 +154,7 @@ programs.vmware-fusion = {
     memory = 8192;
     secureBoot = false;
     disks.primary = {
+      size = 64;
       bus = "nvme";
     };
   };
@@ -183,6 +184,7 @@ programs.vmware-fusion.virtualMachines.asuna = {
   # ...
   disks = {
     primary = {
+      size = 64;
       bus = "nvme";
     };
   };
@@ -193,6 +195,12 @@ By default, the module uses `<bundle>/<name>.vmdk` for the path and NVMe for the
 bus, where `<name>` is the attribute name (`primary` above). Use `path` to
 specify a different location or `bus` to use SATA.
 
+Set `size` to the disk capacity in GiB. When changing it, keep in mind:
+
+- You can [expand a disk, but not shrink it][fusion-resize-virtual-disk].
+- Expanding a disk does not [resize its partitions or filesystems inside the
+  guest][vmware-resize-partition].
+
 Removing a disk declaration will detach it from the VM without deleting its
 files.
 
@@ -200,7 +208,7 @@ files.
 > When adding an existing VM to your configuration, make sure to declare any
 > existing disks unless you want them detached.
 >
-> Also, disk creation and resizing are not currently supported.
+> Disk creation is not currently supported.
 
 ## Remove VMware Fusion
 
@@ -278,4 +286,6 @@ terms, and any conditions shown during download.
 [broadcom-download-instructions]: https://knowledge.broadcom.com/external/article/368667/download-and-license-vmware-desktop-hype.html
 [broadcom-licensing]: https://www.broadcom.com/company/legal/licensing
 [fusion-downloads]: https://support.broadcom.com/group/ecx/productfiles?subFamily=VMware%20Fusion&displayGroup=VMware%20Fusion%2026H1&release=26H1u1&os=&servicePk=546858&language=EN&freeDownloads=true
+[fusion-resize-virtual-disk]: https://techdocs2-prod.adobecqms.net/content/dam/broadcom/techdocs/us/en/pdf/vmware/desktop-hypervisors/fusion/vmware-fusion-pro-13.pdf
 [nix-archive-format]: https://nix.dev/manual/nix/latest/protocols/nix-archive
+[vmware-resize-partition]: https://knowledge.broadcom.com/external/article?legacyId=1004071

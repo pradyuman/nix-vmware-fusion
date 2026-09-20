@@ -1,6 +1,9 @@
+use std::num::NonZeroU64;
 use std::path::PathBuf;
 
 use crate::vm::schema::VirtualDiskBus;
+
+mod commit;
 
 mod inspect;
 pub(crate) use inspect::inspect;
@@ -24,6 +27,8 @@ pub(crate) struct Snapshot {
 #[derive(Debug)]
 pub(crate) struct ConfiguredDisk {
     pub path: PathBuf,
+    pub size: NonZeroU64,
+    pub current_bytes: NonZeroU64,
     pub bus: VirtualDiskBus,
     pub canonical_path: PathBuf,
 }
@@ -46,4 +51,15 @@ pub(crate) enum Action {
     Move { from: DiskLabel, to: VirtualDiskBus },
     Attach { path: PathBuf, to: VirtualDiskBus },
     Detach { label: DiskLabel },
+    Expand { path: PathBuf, size: NonZeroU64 },
+}
+
+// Stage
+
+pub(crate) struct StagedChange {
+    commit_actions: Vec<CommitAction>,
+}
+
+enum CommitAction {
+    Expand { path: PathBuf, size: NonZeroU64 },
 }

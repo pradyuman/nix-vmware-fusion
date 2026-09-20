@@ -25,6 +25,7 @@ pub(crate) type VirtualDisks = BTreeMap<String, VirtualDisk>;
 #[derive(Debug, Deserialize)]
 pub(crate) struct VirtualDisk {
     pub path: VirtualDiskPath,
+    pub size: NonZeroU64,
     #[serde(default)]
     pub bus: VirtualDiskBus,
 }

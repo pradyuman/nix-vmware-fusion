@@ -60,6 +60,10 @@ let
                     default = "${config.path}/${name}.vmdk";
                     description = "Absolute path to the virtual disk.";
                   };
+                  size = lib.mkOption {
+                    type = lib.types.ints.positive;
+                    description = "Virtual disk capacity in GiB. The configured capacity cannot be smaller than the disk's current capacity.";
+                  };
                   bus = lib.mkOption {
                     type = lib.types.enum [
                       "nvme"
