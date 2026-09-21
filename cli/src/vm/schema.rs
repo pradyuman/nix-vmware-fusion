@@ -24,15 +24,19 @@ pub(crate) type VirtualDisks = BTreeMap<String, VirtualDisk>;
 
 #[derive(Debug, Deserialize)]
 pub(crate) struct VirtualDisk {
-    pub path: VirtualDiskPath,
+    pub path: DiskPath,
     pub size: NonZeroU64,
     #[serde(default)]
-    pub bus: VirtualDiskBus,
+    pub bus: DiskBus,
+    #[serde(default)]
+    pub preallocate: bool,
+    #[serde(default)]
+    pub split: bool,
 }
 
 #[derive(Debug, Default, Deserialize, Clone, Copy, PartialEq)]
 #[serde(rename_all = "lowercase")]
-pub(crate) enum VirtualDiskBus {
+pub(crate) enum DiskBus {
     #[default]
     Nvme,
     Sata,
@@ -51,11 +55,11 @@ fn valid_bundle_path(path: &Path) -> bool {
 }
 
 #[nutype(
-    validate(predicate = valid_virtual_disk_path),
+    validate(predicate = valid_disk_path),
     derive(Debug, Deserialize, AsRef),
 )]
-pub(crate) struct VirtualDiskPath(PathBuf);
+pub(crate) struct DiskPath(PathBuf);
 
-fn valid_virtual_disk_path(path: &Path) -> bool {
+fn valid_disk_path(path: &Path) -> bool {
     path.is_absolute() && path.extension().is_some_and(|ext| ext == "vmdk")
 }

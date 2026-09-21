@@ -7,17 +7,17 @@ use std::path::{Path, PathBuf};
 use crate::config::CONFIG;
 use crate::vm::schema::VirtualDisks;
 
-use super::{AttachedDisk, ConfiguredDisk, Snapshot};
+use super::{AttachedDisk, ConfiguredDisk, DiskFormat, DiskState, Snapshot};
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct DiskQuery {
-    disks: Vec<QueriedDisk>,
+struct VmcliDiskQuery {
+    disks: Vec<VmcliDisk>,
 }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct QueriedDisk {
+struct VmcliDisk {
     label: String,
     backing_path_name: PathBuf,
 }
@@ -47,14 +47,41 @@ fn inspect_configured_disks(disks: &VirtualDisks) -> Result<Vec<ConfiguredDisk>>
             Ok(ConfiguredDisk {
                 path: path.clone(),
                 size: disk.size,
-                current_bytes: read_capacity(path).with_context(|| {
-                    format!("could not read disk capacity from {}", path.display())
-                })?,
                 bus: disk.bus,
+                format: DiskFormat::from_options(disk.preallocate, disk.split),
                 canonical_path: fs::canonicalize(path)?,
+                current_state: DiskState {
+                    capacity_bytes: read_capacity(path).with_context(|| {
+                        format!("could not read disk capacity from {}", path.display())
+                    })?,
+                    format: read_format(path).with_context(|| {
+                        format!("could not read disk format from {}", path.display())
+                    })?,
+                },
             })
         })
         .collect()
+}
+
+pub(super) fn read_format(path: &Path) -> Result<DiskFormat> {
+    let json = duct::cmd!(&CONFIG.qemu_img, "info", "--output=json", path)
+        .read()
+        .context("could not run qemu-img")?;
+
+    let info = serde_json::from_str::<serde_json::Value>(&json)
+        .context("could not parse qemu-img disk information")?;
+    let create_type = info
+        .pointer("/format-specific/data/create-type")
+        .and_then(serde_json::Value::as_str)
+        .context("qemu-img did not report a VMDK create type")?;
+
+    match create_type {
+        "monolithicSparse" => Ok(DiskFormat::Sparse),
+        "twoGbMaxExtentSparse" => Ok(DiskFormat::SplitSparse),
+        "monolithicFlat" => Ok(DiskFormat::Preallocated),
+        "twoGbMaxExtentFlat" => Ok(DiskFormat::SplitPreallocated),
+        create_type => bail!("unsupported VMDK format: {create_type}"),
+    }
 }
 
 fn read_capacity(path: &Path) -> Result<NonZeroU64> {
@@ -102,7 +129,7 @@ fn query_attached_disks(vmx_path: &Path) -> Result<Vec<AttachedDisk>> {
         .context("could not query attached disks")?;
 
     let parsed =
-        serde_json::from_str::<DiskQuery>(&json).context("could not parse vmcli disk JSON")?;
+        serde_json::from_str::<VmcliDiskQuery>(&json).context("could not parse vmcli disk JSON")?;
 
     parsed
         .disks
@@ -122,4 +149,44 @@ fn canonicalize_if_exists(path: &Path) -> Result<Option<PathBuf>> {
     } else {
         None
     })
+}
+
+#[cfg(all(test, feature = "vmware-tests"))]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn reads_vmware_disk_formats() -> Result<()> {
+        let temp_dir = tempfile::tempdir()?;
+        let disk_formats = [
+            ("0", DiskFormat::Sparse),
+            ("1", DiskFormat::SplitSparse),
+            ("2", DiskFormat::Preallocated),
+            ("3", DiskFormat::SplitPreallocated),
+        ];
+
+        disk_formats
+            .into_iter()
+            .try_for_each(|(disk_type, expected_format)| -> Result<()> {
+                let path = temp_dir.path().join(format!("type-{disk_type}.vmdk"));
+
+                duct::cmd!(
+                    &CONFIG.vdisk_manager,
+                    "-c",
+                    "-s",
+                    "1MB",
+                    "-a",
+                    "lsilogic",
+                    "-t",
+                    disk_type,
+                    "-q",
+                    &path
+                )
+                .run()?;
+
+                assert_eq!(read_format(&path)?, expected_format);
+
+                Ok(())
+            })
+    }
 }

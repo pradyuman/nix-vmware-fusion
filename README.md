@@ -20,24 +20,20 @@ If prompted, review and accept Broadcom's Terms and Conditions and complete the
 Trade Compliance form. Broadcom's [download instructions][broadcom-download-instructions]
 explain these steps.
 
-> [!IMPORTANT]
-> The filename must remain unchanged because Nix identifies the required file
-> by both its name and content hash.
-
 ### 2. Add the DMG to the Nix store
 
 ```sh
 # Replace this path if the DMG is elsewhere.
 dmg="$HOME/Downloads/VMware-Fusion-26H1u1-25689522_universal.dmg"
-nix store add --mode flat --hash-algo sha256 "$dmg"
+nix store add \
+  --mode flat \
+  --hash-algo sha256 \
+  --name VMware-Fusion-26H1u1-25689522_universal.dmg \
+  "$dmg"
 ```
 
-Nix computes the DMG's SHA-256 when you add it to the store. If it does not
-match Broadcom's published hash, the install command will fail.
-
-Later runs reuse the copy in the Nix store, so you usually only need to import
-the DMG once per pinned VMware Fusion build. That said, you will need to import
-it again if garbage collection removes it or if you move to a new machine.
+> [!NOTE]
+> You will only need to import the DMG once per pinned VMware Fusion build.
 
 ### 3. Install VMware Fusion
 
@@ -65,8 +61,8 @@ Add the module to your nix-darwin configuration:
 }
 ```
 
-On activation, the module installs the pinned build unless the same build is
-already installed. It also adds the following to the system profile:
+On activation, the module installs the pinned build and adds the following to
+the system profile:
 
 - `nix-vmware-fusion`, with `install`, `uninstall`, and `purge` subcommands
 - VMware Fusion's bundled command-line tools, including `vmrun`, `vmcli`,
@@ -85,9 +81,8 @@ programs.vmware-fusion.networking.text = ''
 '';
 ```
 
-During activation, the module replaces
-`/Library/Preferences/VMware Fusion/networking`. It does not apply the new
-configuration or restart VMware's networking services.
+The module sets the new configuration during activation, but you will need to
+restart VMware's networking services for the changes to take effect.
 
 #### Directly
 
@@ -186,20 +181,30 @@ programs.vmware-fusion.virtualMachines.asuna = {
     primary = {
       size = 64;
       bus = "nvme";
+      preallocate = false;
+      split = true;
     };
   };
 };
 ```
 
-By default, the module uses `<bundle>/<name>.vmdk` for the path and NVMe for the
-bus, where `<name>` is the attribute name (`primary` above). Use `path` to
-specify a different location or `bus` to use SATA.
+Each disk supports the following settings:
 
-Set `size` to the disk capacity in GiB. When changing it, keep in mind:
+| Setting       | Type                 | Default                | Description                                                                        |
+| ------------- | -------------------- | ---------------------- | ---------------------------------------------------------------------------------- |
+| `path`        | String               | `<bundle>/<name>.vmdk` | Disk location, where `<name>` is the attribute name (`primary` above)              |
+| `size`        | Positive integer     | —                      | Disk capacity in GiB (required)                                                    |
+| `bus`         | `"nvme"` or `"sata"` | `"nvme"`               | Bus used to attach the disk                                                        |
+| `preallocate` | Boolean              | `false`                | Reserve the disk's full capacity on the host instead of growing as data is written |
+| `split`       | Boolean              | `false`                | Store the disk across multiple files instead of a single file                      |
+
+When changing disk settings, keep in mind:
 
 - You can [expand a disk, but not shrink it][fusion-resize-virtual-disk].
 - Expanding a disk does not [resize its partitions or filesystems inside the
   guest][vmware-resize-partition].
+- Changing `preallocate` or `split` will [convert the virtual disk to the target
+  format][vmware-convert-virtual-disk].
 
 Removing a disk declaration will detach it from the VM without deleting its
 files.
@@ -288,4 +293,5 @@ terms, and any conditions shown during download.
 [fusion-downloads]: https://support.broadcom.com/group/ecx/productfiles?subFamily=VMware%20Fusion&displayGroup=VMware%20Fusion%2026H1&release=26H1u1&os=&servicePk=546858&language=EN&freeDownloads=true
 [fusion-resize-virtual-disk]: https://techdocs2-prod.adobecqms.net/content/dam/broadcom/techdocs/us/en/pdf/vmware/desktop-hypervisors/fusion/vmware-fusion-pro-13.pdf
 [nix-archive-format]: https://nix.dev/manual/nix/latest/protocols/nix-archive
+[vmware-convert-virtual-disk]: https://knowledge.broadcom.com/external/article/302738
 [vmware-resize-partition]: https://knowledge.broadcom.com/external/article?legacyId=1004071

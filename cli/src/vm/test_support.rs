@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 
 use crate::config::CONFIG;
@@ -17,7 +17,11 @@ pub(super) fn create_vmx() -> Result<(tempfile::TempDir, PathBuf)> {
 }
 
 pub(super) fn create_partitioned_vmdk(path: &Path, size: &str) -> Result<()> {
-    let source_path = path.with_file_name("source.raw");
+    let directory = path.parent().context("missing disk directory")?;
+    let raw_dir = tempfile::Builder::new()
+        .prefix(".nix-vmware-fusion-vmdk-raw-")
+        .tempdir_in(directory)?;
+    let source_path = raw_dir.path().join("source.raw");
 
     // Create a partition table so vmdkserver can report the disk capacity
     duct::cmd!(
@@ -36,7 +40,7 @@ pub(super) fn create_partitioned_vmdk(path: &Path, size: &str) -> Result<()> {
     .run()?;
 
     duct::cmd!(
-        "qemu-img",
+        &CONFIG.qemu_img,
         "convert",
         "-f",
         "raw",

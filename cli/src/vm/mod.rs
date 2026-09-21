@@ -189,7 +189,10 @@ mod tests {
         let attached = &snapshot.disks.attached_disks;
 
         assert_eq!(
-            snapshot.disks.configured_disks[0].current_bytes.get(),
+            snapshot.disks.configured_disks[0]
+                .current_state
+                .capacity_bytes
+                .get(),
             BYTES_PER_GIB
         );
         assert_eq!(attached.len(), 1);

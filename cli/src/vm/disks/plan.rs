@@ -2,7 +2,7 @@ use anyhow::{Context, Result, bail, ensure};
 use std::cmp::Ordering;
 use std::collections::HashSet;
 
-use crate::vm::schema::VirtualDiskBus;
+use crate::vm::schema::DiskBus;
 
 use super::{Action, BYTES_PER_GIB, ConfiguredDisk, Plan, Snapshot};
 
@@ -59,9 +59,22 @@ pub(crate) fn plan(snapshot: Snapshot) -> Result<Plan> {
         .filter_map(Result::transpose)
         .collect::<Result<Vec<_>>>()?;
 
+    let conversions = snapshot
+        .configured_disks
+        .iter()
+        .filter(|disk| disk.format != disk.current_state.format)
+        .map(|disk| Action::Convert {
+            path: disk.path.clone(),
+            format: disk.format,
+        });
+
     // Detach unconfigured disks first so moves and attachments can reuse their labels
     Ok(Plan {
-        actions: unconfigured.chain(configured).chain(expansions).collect(),
+        actions: unconfigured
+            .chain(configured)
+            .chain(expansions)
+            .chain(conversions)
+            .collect(),
     })
 }
 
@@ -72,7 +85,7 @@ fn plan_expansion(disk: &ConfiguredDisk) -> Result<Option<Action>> {
         .checked_mul(BYTES_PER_GIB)
         .context("configured disk capacity is too large")?;
 
-    match requested_bytes.cmp(&disk.current_bytes.get()) {
+    match requested_bytes.cmp(&disk.current_state.capacity_bytes.get()) {
         Ordering::Less => bail!(
             "cannot resize disk {} below its current capacity (requested: {} GiB)",
             disk.path.display(),
@@ -86,11 +99,11 @@ fn plan_expansion(disk: &ConfiguredDisk) -> Result<Option<Action>> {
     }
 }
 
-fn bus_from_label(label: &str) -> Option<VirtualDiskBus> {
+fn bus_from_label(label: &str) -> Option<DiskBus> {
     if label.starts_with("nvme") {
-        Some(VirtualDiskBus::Nvme)
+        Some(DiskBus::Nvme)
     } else if label.starts_with("sata") {
-        Some(VirtualDiskBus::Sata)
+        Some(DiskBus::Sata)
     } else {
         None
     }
@@ -101,37 +114,32 @@ mod tests {
     use std::num::NonZeroU64;
     use std::path::Path;
 
-    use crate::vm::disks::{AttachedDisk, ConfiguredDisk};
+    use crate::vm::disks::{AttachedDisk, ConfiguredDisk, DiskFormat, DiskState};
 
     use super::*;
 
-    fn configured(path: &str, bus: VirtualDiskBus) -> ConfiguredDisk {
-        configured_with_canonical_path(path, path, bus)
-    }
-
-    fn configured_with_canonical_path(
-        path: &str,
-        canonical_path: &str,
-        bus: VirtualDiskBus,
-    ) -> ConfiguredDisk {
+    fn configured(path: &str, bus: DiskBus) -> ConfiguredDisk {
         ConfiguredDisk {
             path: path.into(),
             size: NonZeroU64::new(8).expect("non-zero disk capacity"),
-            current_bytes: NonZeroU64::new(8 * BYTES_PER_GIB)
-                .expect("non-zero current disk capacity"),
             bus,
-            canonical_path: canonical_path.into(),
+            format: DiskFormat::Sparse,
+            canonical_path: path.into(),
+            current_state: DiskState {
+                capacity_bytes: NonZeroU64::new(8 * BYTES_PER_GIB)
+                    .expect("non-zero current disk capacity"),
+                format: DiskFormat::Sparse,
+            },
         }
     }
 
     fn configured_with_capacity(path: &str, size: u64, current_bytes: u64) -> ConfiguredDisk {
-        ConfiguredDisk {
-            path: path.into(),
-            size: NonZeroU64::new(size).expect("non-zero disk capacity"),
-            current_bytes: NonZeroU64::new(current_bytes).expect("non-zero current disk capacity"),
-            bus: VirtualDiskBus::Nvme,
-            canonical_path: path.into(),
-        }
+        let mut disk = configured(path, DiskBus::Nvme);
+        disk.size = NonZeroU64::new(size).expect("non-zero disk capacity");
+        disk.current_state.capacity_bytes =
+            NonZeroU64::new(current_bytes).expect("non-zero current disk capacity");
+
+        disk
     }
 
     fn attached(path: &str, label: &str) -> AttachedDisk {
@@ -145,7 +153,7 @@ mod tests {
     fn disk_on_configured_bus_is_unchanged() -> Result<()> {
         let disk_path = "/disks/system.vmdk";
         let snapshot = Snapshot {
-            configured_disks: vec![configured(disk_path, VirtualDiskBus::Nvme)],
+            configured_disks: vec![configured(disk_path, DiskBus::Nvme)],
             attached_disks: vec![attached(disk_path, "nvme0:0")],
         };
 
@@ -158,7 +166,7 @@ mod tests {
     fn disk_on_another_bus_is_moved() -> Result<()> {
         let disk_path = "/disks/system.vmdk";
         let snapshot = Snapshot {
-            configured_disks: vec![configured(disk_path, VirtualDiskBus::Sata)],
+            configured_disks: vec![configured(disk_path, DiskBus::Sata)],
             attached_disks: vec![attached(disk_path, "nvme0:0")],
         };
 
@@ -168,7 +176,7 @@ mod tests {
             plan.actions.as_slice(),
             [Action::Move {
                 from,
-                to: VirtualDiskBus::Sata,
+                to: DiskBus::Sata,
             }] if from == "nvme0:0"
         ));
 
@@ -179,7 +187,7 @@ mod tests {
     fn unattached_configured_disk_is_attached() -> Result<()> {
         let disk_path = "/disks/system.vmdk";
         let snapshot = Snapshot {
-            configured_disks: vec![configured(disk_path, VirtualDiskBus::Nvme)],
+            configured_disks: vec![configured(disk_path, DiskBus::Nvme)],
             attached_disks: Vec::new(),
         };
 
@@ -189,8 +197,8 @@ mod tests {
             plan.actions.as_slice(),
             [Action::Attach {
                 path,
-                to: VirtualDiskBus::Nvme,
-            }] if path.as_path() == Path::new(disk_path)
+                to: DiskBus::Nvme,
+            }] if path == Path::new(disk_path)
         ));
 
         Ok(())
@@ -217,7 +225,7 @@ mod tests {
     fn detachments_are_planned_before_attachments() -> Result<()> {
         let new_path = "/disks/new.vmdk";
         let snapshot = Snapshot {
-            configured_disks: vec![configured(new_path, VirtualDiskBus::Nvme)],
+            configured_disks: vec![configured(new_path, DiskBus::Nvme)],
             attached_disks: vec![attached("/disks/old.vmdk", "nvme0:0")],
         };
 
@@ -229,9 +237,9 @@ mod tests {
                 Action::Detach { label },
                 Action::Attach {
                     path,
-                    to: VirtualDiskBus::Nvme,
+                    to: DiskBus::Nvme,
                 },
-            ] if label == "nvme0:0" && path.as_path() == Path::new(new_path)
+            ] if label == "nvme0:0" && path == Path::new(new_path)
         ));
 
         Ok(())
@@ -240,12 +248,12 @@ mod tests {
     #[test]
     fn disk_aliases_are_matched_by_canonical_path() -> Result<()> {
         let canonical_path = "/disks/system.vmdk";
+        let configured_disk = ConfiguredDisk {
+            canonical_path: canonical_path.into(),
+            ..configured("/aliases/system.vmdk", DiskBus::Nvme)
+        };
         let snapshot = Snapshot {
-            configured_disks: vec![configured_with_canonical_path(
-                "/aliases/system.vmdk",
-                canonical_path,
-                VirtualDiskBus::Nvme,
-            )],
+            configured_disks: vec![configured_disk],
             attached_disks: vec![attached(canonical_path, "nvme0:0")],
         };
 
@@ -259,16 +267,11 @@ mod tests {
         let canonical_path = "/disks/system.vmdk";
         let snapshot = Snapshot {
             configured_disks: vec![
-                configured_with_canonical_path(
-                    canonical_path,
-                    canonical_path,
-                    VirtualDiskBus::Nvme,
-                ),
-                configured_with_canonical_path(
-                    "/aliases/system.vmdk",
-                    canonical_path,
-                    VirtualDiskBus::Nvme,
-                ),
+                configured(canonical_path, DiskBus::Nvme),
+                ConfiguredDisk {
+                    canonical_path: canonical_path.into(),
+                    ..configured("/aliases/system.vmdk", DiskBus::Nvme)
+                },
             ],
             attached_disks: Vec::new(),
         };
@@ -282,7 +285,7 @@ mod tests {
     fn disk_on_unsupported_bus_is_moved_to_configured_bus() -> Result<()> {
         let disk_path = "/disks/system.vmdk";
         let snapshot = Snapshot {
-            configured_disks: vec![configured(disk_path, VirtualDiskBus::Nvme)],
+            configured_disks: vec![configured(disk_path, DiskBus::Nvme)],
             attached_disks: vec![attached(disk_path, "scsi0:0")],
         };
 
@@ -292,7 +295,7 @@ mod tests {
             plan.actions.as_slice(),
             [Action::Move {
                 from,
-                to: VirtualDiskBus::Nvme,
+                to: DiskBus::Nvme,
             }] if from == "scsi0:0"
         ));
 
@@ -312,7 +315,7 @@ mod tests {
         assert!(matches!(
             plan.actions.as_slice(),
             [Action::Expand { path, size }]
-                if path.as_path() == Path::new(disk_path) && size.get() == 16
+                if path == Path::new(disk_path) && size.get() == 16
         ));
 
         Ok(())
@@ -329,6 +332,30 @@ mod tests {
         let plan = plan(snapshot)?;
 
         assert!(plan.actions.is_empty());
+
+        Ok(())
+    }
+
+    #[test]
+    fn disk_in_another_format_is_converted() -> Result<()> {
+        let disk_path = "/disks/system.vmdk";
+
+        let mut configured_disk = configured(disk_path, DiskBus::Nvme);
+        configured_disk.format = DiskFormat::SplitSparse;
+        configured_disk.current_state.format = DiskFormat::Sparse;
+
+        let snapshot = Snapshot {
+            configured_disks: vec![configured_disk],
+            attached_disks: vec![attached(disk_path, "nvme0:0")],
+        };
+
+        let plan = plan(snapshot)?;
+
+        assert!(matches!(
+            plan.actions.as_slice(),
+            [Action::Convert { path, format: DiskFormat::SplitSparse }]
+                if path == Path::new(disk_path)
+        ));
 
         Ok(())
     }

@@ -158,6 +158,8 @@ in
         path = "/Users/test/Virtual Machines.localized/asuna.vmwarevm/primary.vmdk";
         size = 64;
         bus = "nvme";
+        preallocate = false;
+        split = false;
       };
     };
   };

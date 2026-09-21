@@ -3,7 +3,7 @@ use serde::Deserialize;
 use std::path::Path;
 
 use crate::config::CONFIG;
-use crate::vm::schema::VirtualDiskBus;
+use crate::vm::schema::DiskBus;
 
 use super::{Action, CommitAction, DiskLabel, Plan, StagedChange};
 
@@ -69,6 +69,10 @@ pub(crate) fn stage(draft_path: &Path, plan: Plan) -> Result<StagedChange> {
                     // Defer changes to the real disk until commit checks the VM is stopped
                     Some(CommitAction::Expand { path, size })
                 }
+                Action::Convert { path, format } => {
+                    // Defer changes to the real disk until commit checks the VM is stopped
+                    Some(CommitAction::Convert { path, format })
+                }
             };
 
             Ok(commit_action)
@@ -79,10 +83,10 @@ pub(crate) fn stage(draft_path: &Path, plan: Plan) -> Result<StagedChange> {
     Ok(StagedChange { commit_actions })
 }
 
-fn find_first_free(draft_path: &Path, bus: VirtualDiskBus) -> Result<DiskLabel> {
+fn find_first_free(draft_path: &Path, bus: DiskBus) -> Result<DiskLabel> {
     let (module, controller) = match bus {
-        VirtualDiskBus::Nvme => ("nvme", "nvme0"),
-        VirtualDiskBus::Sata => ("sata", "sata0"),
+        DiskBus::Nvme => ("nvme", "nvme0"),
+        DiskBus::Sata => ("sata", "sata0"),
     };
 
     duct::cmd!(
@@ -118,10 +122,12 @@ fn find_first_free(draft_path: &Path, bus: VirtualDiskBus) -> Result<DiskLabel> 
 mod tests {
     use std::num::NonZeroU64;
 
+    use crate::vm::disks::DiskFormat;
+
     use super::*;
 
     #[test]
-    fn expansion_is_deferred_until_commit() -> Result<()> {
+    fn expansion_is_staged_for_commit() -> Result<()> {
         let disk_path = Path::new("/disks/system.vmdk");
         let size = NonZeroU64::new(12).expect("non-zero disk capacity");
         let plan = Plan {
@@ -144,13 +150,37 @@ mod tests {
         Ok(())
     }
 
+    #[test]
+    fn conversion_is_staged_for_commit() -> Result<()> {
+        let disk_path = Path::new("/disks/system.vmdk");
+        let format = DiskFormat::SplitSparse;
+        let plan = Plan {
+            actions: vec![Action::Convert {
+                path: disk_path.to_owned(),
+                format,
+            }],
+        };
+
+        let staged = stage(Path::new("unused.vmx"), plan)?;
+
+        assert!(matches!(
+            staged.commit_actions.as_slice(),
+            [CommitAction::Convert {
+                path,
+                format: staged_format,
+            }] if path == disk_path && *staged_format == format
+        ));
+
+        Ok(())
+    }
+
     #[cfg(feature = "vmware-tests")]
     mod vmware {
         use std::fs;
         use std::path::Path;
 
         use crate::vm::disks::{BYTES_PER_GIB, inspect};
-        use crate::vm::schema::{VirtualDisk, VirtualDiskPath, VirtualDisks};
+        use crate::vm::schema::{DiskPath, VirtualDisk, VirtualDisks};
         use crate::vm::test_support::{create_partitioned_vmdk, create_vmx};
 
         use super::*;
@@ -175,17 +205,6 @@ mod tests {
             Ok(())
         }
 
-        fn configured_disks(path: &Path, size: NonZeroU64) -> VirtualDisks {
-            VirtualDisks::from([(
-                "primary".to_owned(),
-                VirtualDisk {
-                    path: VirtualDiskPath::try_new(path.to_owned()).expect("valid disk path"),
-                    size,
-                    bus: VirtualDiskBus::Nvme,
-                },
-            )])
-        }
-
         #[test]
         fn vmcli_manages_disk_attachments() -> Result<()> {
             let (temp_dir, draft_path) = create_vmx()?;
@@ -199,8 +218,8 @@ mod tests {
                 &draft_path,
                 Plan {
                     actions: vec![Action::Attach {
-                        path: disk_path.clone(),
-                        to: VirtualDiskBus::Nvme,
+                        path: disk_path,
+                        to: DiskBus::Nvme,
                     }],
                 },
             )?;
@@ -208,7 +227,7 @@ mod tests {
             let attached = inspect(&draft_path, &VirtualDisks::new())?.attached_disks;
             assert_eq!(attached.len(), 1);
             assert!(attached[0].label.starts_with("nvme"));
-            assert_eq!(attached[0].canonical_path, Some(canonical_path.clone()));
+            assert_eq!(attached[0].canonical_path.as_ref(), Some(&canonical_path));
 
             // Move the attached disk to SATA
             let nvme_label = attached[0].label.clone();
@@ -217,7 +236,7 @@ mod tests {
                 Plan {
                     actions: vec![Action::Move {
                         from: nvme_label,
-                        to: VirtualDiskBus::Sata,
+                        to: DiskBus::Sata,
                     }],
                 },
             )?;
@@ -255,12 +274,24 @@ mod tests {
 
             create_partitioned_vmdk(&disk_path, "10MiB")?;
 
-            let configured = configured_disks(&disk_path, expanded_size);
+            let configured = VirtualDisks::from([(
+                "primary".to_owned(),
+                VirtualDisk {
+                    path: DiskPath::try_new(disk_path.clone()).expect("valid disk path"),
+                    size: expanded_size,
+                    bus: DiskBus::Nvme,
+                    preallocate: false,
+                    split: false,
+                },
+            )]);
 
             // Inspect the initial capacity
             let snapshot = inspect(&vmx_path, &configured)?;
             assert_eq!(
-                snapshot.configured_disks[0].current_bytes.get(),
+                snapshot.configured_disks[0]
+                    .current_state
+                    .capacity_bytes
+                    .get(),
                 10 * BYTES_PER_MIB
             );
 
@@ -269,7 +300,7 @@ mod tests {
                 &vmx_path,
                 Plan {
                     actions: vec![Action::Expand {
-                        path: disk_path.clone(),
+                        path: disk_path,
                         size: expanded_size,
                     }],
                 },
@@ -279,7 +310,10 @@ mod tests {
             // Inspect the expanded capacity
             let snapshot = inspect(&vmx_path, &configured)?;
             assert_eq!(
-                snapshot.configured_disks[0].current_bytes.get(),
+                snapshot.configured_disks[0]
+                    .current_state
+                    .capacity_bytes
+                    .get(),
                 expanded_size.get() * BYTES_PER_GIB
             );
 

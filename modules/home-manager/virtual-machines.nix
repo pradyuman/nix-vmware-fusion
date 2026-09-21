@@ -72,6 +72,16 @@ let
                     default = "nvme";
                     description = "Virtual disk bus type.";
                   };
+                  preallocate = lib.mkOption {
+                    type = lib.types.bool;
+                    default = false;
+                    description = "Whether to pre-allocate disk space.";
+                  };
+                  split = lib.mkOption {
+                    type = lib.types.bool;
+                    default = false;
+                    description = "Whether to split the virtual disk into multiple files.";
+                  };
                 };
               }
             )
