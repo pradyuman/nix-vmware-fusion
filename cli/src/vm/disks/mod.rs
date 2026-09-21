@@ -16,7 +16,7 @@ pub(crate) use stage::stage;
 
 pub(crate) type DiskLabel = String;
 
-const BYTES_PER_GIB: u64 = 1024_u64.pow(3);
+pub(crate) const BYTES_PER_GIB: u64 = 1024_u64.pow(3);
 
 // Inspect
 

@@ -144,14 +144,14 @@ mod tests {
         Ok(())
     }
 
-    #[cfg(feature = "vmware-contract-tests")]
+    #[cfg(feature = "vmware-tests")]
     mod vmware {
         use std::fs;
         use std::path::Path;
 
         use crate::vm::disks::{BYTES_PER_GIB, inspect};
         use crate::vm::schema::{VirtualDisk, VirtualDiskPath, VirtualDisks};
-        use crate::vm::test_support::create_vmx;
+        use crate::vm::test_support::{create_partitioned_vmdk, create_vmx};
 
         use super::*;
 
@@ -169,40 +169,6 @@ mod tests {
                 "0",
                 "-q",
                 path
-            )
-            .run()?;
-
-            Ok(())
-        }
-
-        fn create_partitioned_vmdk(directory: &Path, path: &Path, size: &str) -> Result<()> {
-            let source_path = directory.join("source.raw");
-
-            // Create a partition table so vmdkserver can report the disk capacity
-            duct::cmd!(
-                "diskutil",
-                "image",
-                "create",
-                "blank",
-                "--format",
-                "RAW",
-                "--size",
-                size,
-                "--fs",
-                "ExFAT",
-                &source_path
-            )
-            .run()?;
-
-            duct::cmd!(
-                "qemu-img",
-                "convert",
-                "-f",
-                "raw",
-                "-O",
-                "vmdk",
-                &source_path,
-                path,
             )
             .run()?;
 
@@ -242,10 +208,7 @@ mod tests {
             let attached = inspect(&draft_path, &VirtualDisks::new())?.attached_disks;
             assert_eq!(attached.len(), 1);
             assert!(attached[0].label.starts_with("nvme"));
-            assert_eq!(
-                attached[0].canonical_path.as_deref(),
-                Some(canonical_path.as_path())
-            );
+            assert_eq!(attached[0].canonical_path, Some(canonical_path.clone()));
 
             // Move the attached disk to SATA
             let nvme_label = attached[0].label.clone();
@@ -262,10 +225,7 @@ mod tests {
             let attached = inspect(&draft_path, &VirtualDisks::new())?.attached_disks;
             assert_eq!(attached.len(), 1);
             assert!(attached[0].label.starts_with("sata"));
-            assert_eq!(
-                attached[0].canonical_path.as_deref(),
-                Some(canonical_path.as_path())
-            );
+            assert_eq!(attached[0].canonical_path, Some(canonical_path));
 
             // Detach the disk
             stage(
@@ -293,7 +253,7 @@ mod tests {
             let disk_path = temp_dir.path().join("managed.vmdk");
             let expanded_size = NonZeroU64::new(1).expect("non-zero disk capacity");
 
-            create_partitioned_vmdk(temp_dir.path(), &disk_path, "10MiB")?;
+            create_partitioned_vmdk(&disk_path, "10MiB")?;
 
             let configured = configured_disks(&disk_path, expanded_size);
 

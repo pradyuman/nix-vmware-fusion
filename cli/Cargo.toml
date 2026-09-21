@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [features]
-vmware-contract-tests = []
+vmware-tests = []
 
 [dependencies]
 anyhow = "1.0.104"

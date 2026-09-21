@@ -11,9 +11,10 @@
 # - The module suites evaluate nix-darwin and Home Manager output without activation.
 # - The command-line tools check builds the VMware wrappers without executing them.
 #
-# VMware contract tests run the installed tools to verify the assumptions the CLI
-# makes about them. They require VMware Fusion and run separately with
-# `nix run .#vmware-contract-tests`.
+# The VMware test suite includes both contract tests that verify the CLI's
+# assumptions about individual VMware tools and virtual machine lifecycle tests
+# that apply new and updated configurations without booting a guest. It requires
+# Fusion and runs separately with `nix run .#vmware-tests`.
 
 { inputs, ... }:
 
@@ -30,8 +31,8 @@
       };
       cliArtifacts = craneLib.buildDepsOnly cliArgs;
 
-      vmwareContractTests = pkgs.writeShellApplication {
-        name = "nix-vmware-fusion-vmware-contract-tests";
+      vmwareTests = pkgs.writeShellApplication {
+        name = "nix-vmware-fusion-vmware-tests";
         runtimeInputs = [
           pkgs.cargo
           pkgs.qemu-utils
@@ -44,7 +45,7 @@
           export NIX_VMWARE_FUSION_VMDK_SERVER=${pkgs.lib.getExe' localPkgs.commandLineTools "vmware-vmdkserver"}
           export NIX_VMWARE_FUSION_VMCLI=${pkgs.lib.getExe' localPkgs.commandLineTools "vmcli"}
 
-          exec cargo test --locked --manifest-path cli/Cargo.toml --features vmware-contract-tests "$@"
+          exec cargo test --locked --manifest-path cli/Cargo.toml --features vmware-tests "$@"
         '';
       };
     in
@@ -88,9 +89,9 @@
         command-line-tools = localPkgs.commandLineTools;
       };
 
-      apps.vmware-contract-tests = {
+      apps.vmware-tests = {
         type = "app";
-        program = pkgs.lib.getExe vmwareContractTests;
+        program = pkgs.lib.getExe vmwareTests;
       };
     };
 }

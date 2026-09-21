@@ -8,7 +8,7 @@ mod disks;
 mod schema;
 mod vmx;
 
-#[cfg(all(test, feature = "vmware-contract-tests"))]
+#[cfg(all(test, feature = "vmware-tests"))]
 mod test_support;
 
 // Inspect
@@ -126,4 +126,138 @@ pub(crate) fn apply(file: &Path) -> Result<()> {
     let staged = stage(plan)?;
 
     commit(staged)
+}
+
+#[cfg(all(test, feature = "vmware-tests"))]
+mod tests {
+    use std::path::Path;
+
+    use super::disks::BYTES_PER_GIB;
+    use super::schema::VirtualMachine;
+    use super::test_support::{GUEST_OS, assert_vmx_entry, create_partitioned_vmdk};
+    use super::*;
+
+    fn virtual_machine_ir(bundle_path: &Path, disk_path: &Path) -> serde_json::Value {
+        serde_json::json!({
+            "displayName": "Test VM",
+            "path": bundle_path,
+            "guestOS": GUEST_OS,
+            "vcpus": 4,
+            "memory": 4096,
+            "secureBoot": true,
+            "disks": {
+                "primary": {
+                    "path": disk_path,
+                    "size": 1,
+                    "bus": "nvme"
+                }
+            }
+        })
+    }
+
+    fn write_ir_file(path: &Path, ir: &serde_json::Value) -> Result<()> {
+        fs::write(path, serde_json::to_vec(ir)?)?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn applies_virtual_machine_configuration() -> Result<()> {
+        let temp_dir = tempfile::tempdir()?;
+        let bundle_path = temp_dir.path().join("test.vmwarevm");
+        let vmx_path = bundle_path.join("test.vmx");
+        let disk_path = temp_dir.path().join("managed.vmdk");
+        let ir_path = temp_dir.path().join("virtual-machine-ir.json");
+
+        create_partitioned_vmdk(&disk_path, "10MiB")?;
+
+        let ir = virtual_machine_ir(&bundle_path, &disk_path);
+        write_ir_file(&ir_path, &ir)?;
+
+        // Apply the initial configuration
+        apply(&ir_path)?;
+
+        assert_vmx_entry(&vmx_path, "displayName", "Test VM")?;
+        assert_vmx_entry(&vmx_path, "guestOS", GUEST_OS)?;
+        assert_vmx_entry(&vmx_path, "numvcpus", "4")?;
+        assert_vmx_entry(&vmx_path, "memsize", "4096")?;
+        assert_vmx_entry(&vmx_path, "uefi.secureBoot.enabled", "TRUE")?;
+        assert_vmx_entry(&vmx_path, "firmware", "efi")?;
+
+        let schema = serde_json::from_value::<VirtualMachine>(ir)?;
+        let snapshot = inspect(&schema)?;
+        let attached = &snapshot.disks.attached_disks;
+
+        assert_eq!(
+            snapshot.disks.configured_disks[0].current_bytes.get(),
+            BYTES_PER_GIB
+        );
+        assert_eq!(attached.len(), 1);
+        assert!(attached[0].label.starts_with("nvme"));
+        assert_eq!(
+            attached[0].canonical_path,
+            Some(fs::canonicalize(&disk_path)?)
+        );
+
+        // Reapplying the same IR should leave the VMX unchanged
+        let vmx_contents = fs::read_to_string(&vmx_path)?;
+        apply(&ir_path)?;
+        assert_eq!(fs::read_to_string(&vmx_path)?, vmx_contents);
+
+        Ok(())
+    }
+
+    #[test]
+    fn updates_existing_virtual_machine_configuration() -> Result<()> {
+        let temp_dir = tempfile::tempdir()?;
+        let bundle_path = temp_dir.path().join("test.vmwarevm");
+        let vmx_path = bundle_path.join("test.vmx");
+        let disk_path = temp_dir.path().join("managed.vmdk");
+        let ir_path = temp_dir.path().join("virtual-machine-ir.json");
+
+        create_partitioned_vmdk(&disk_path, "10MiB")?;
+
+        // Create the initial virtual machine
+        let mut ir = virtual_machine_ir(&bundle_path, &disk_path);
+        write_ir_file(&ir_path, &ir)?;
+        apply(&ir_path)?;
+
+        // Update its settings and move the disk to SATA
+        let display_name = "Updated Test VM";
+        let vcpus = 6;
+        let memory = 8192;
+        let secure_boot = false;
+        let bus = "sata";
+
+        ir["displayName"] = serde_json::json!(display_name);
+        ir["vcpus"] = serde_json::json!(vcpus);
+        ir["memory"] = serde_json::json!(memory);
+        ir["secureBoot"] = serde_json::json!(secure_boot);
+        ir["disks"]["primary"]["bus"] = serde_json::json!(bus);
+        write_ir_file(&ir_path, &ir)?;
+
+        // Apply the updated configuration
+        apply(&ir_path)?;
+
+        assert_vmx_entry(&vmx_path, "displayName", display_name)?;
+        assert_vmx_entry(&vmx_path, "numvcpus", &vcpus.to_string())?;
+        assert_vmx_entry(&vmx_path, "memsize", &memory.to_string())?;
+        assert_vmx_entry(
+            &vmx_path,
+            "uefi.secureBoot.enabled",
+            if secure_boot { "TRUE" } else { "FALSE" },
+        )?;
+
+        let schema = serde_json::from_value::<VirtualMachine>(ir)?;
+        let attached = inspect(&schema)?.disks.attached_disks;
+
+        assert_eq!(attached.len(), 1);
+        assert!(attached[0].label.starts_with(bus));
+        assert_eq!(
+            attached[0].canonical_path,
+            Some(fs::canonicalize(&disk_path)?)
+        );
+
+        Ok(())
+    }
 }

@@ -97,29 +97,17 @@ mod tests {
         assert!(!staged.is_noop());
     }
 
-    #[cfg(feature = "vmware-contract-tests")]
+    #[cfg(feature = "vmware-tests")]
     mod vmware {
-        use std::path::Path;
-
-        use crate::vm::test_support::{GUEST_OS, create_vmx};
+        use crate::vm::test_support::{GUEST_OS, assert_vmx_entry, create_vmx};
 
         use super::*;
-
-        fn query_entry(path: &Path, key: &str) -> Result<String> {
-            Ok(duct::cmd!(&CONFIG.dict_tool, "-q", "query", path, key).read()?)
-        }
-
-        fn assert_entry(path: &Path, key: &str, value: &str) -> Result<()> {
-            assert_eq!(query_entry(path, key)?, format!(r#"{key} = "{value}""#));
-
-            Ok(())
-        }
 
         #[test]
         fn vmcli_creates_vmx() -> Result<()> {
             let (_temp_dir, vmx_path) = create_vmx()?;
 
-            assert_entry(&vmx_path, "guestOS", GUEST_OS)?;
+            assert_vmx_entry(&vmx_path, "guestOS", GUEST_OS)?;
 
             Ok(())
         }
@@ -148,8 +136,8 @@ mod tests {
                 &[("displayName", updated_display_name.to_owned())],
             )?;
 
-            assert_entry(&vmx_path, "displayName", updated_display_name)?;
-            assert_entry(&vmx_path, "numvcpus", vcpus)?;
+            assert_vmx_entry(&vmx_path, "displayName", updated_display_name)?;
+            assert_vmx_entry(&vmx_path, "numvcpus", vcpus)?;
 
             Ok(())
         }

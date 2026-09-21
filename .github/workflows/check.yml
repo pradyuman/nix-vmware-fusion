@@ -1,4 +1,4 @@
-name: Check
+name: Checks
 
 on:
   push:
@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   check:
-    name: Check flake
+    name: Nix flake
     runs-on: macos-26
     timeout-minutes: 5
 
