@@ -1,0 +1,50 @@
+name: VMware tests
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  contract-tests:
+    name: Contract tests
+    environment:
+      name: vmware-tests
+      deployment: false
+    runs-on: macos-26
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31.11.1
+
+      - name: Download VMware Fusion
+        env:
+          R2_BUCKET: ${{ vars.R2_BUCKET }}
+          R2_DMG_KEY: ${{ vars.R2_DMG_KEY }}
+          RCLONE_CONFIG_R2_TYPE: s3
+          RCLONE_CONFIG_R2_PROVIDER: Cloudflare
+          RCLONE_CONFIG_R2_ENDPOINT: https://${{ vars.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+          RCLONE_CONFIG_R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          RCLONE_CONFIG_R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          RCLONE_CONFIG_R2_NO_CHECK_BUCKET: true
+        run: |
+          dmg="$RUNNER_TEMP/${R2_DMG_KEY##*/}"
+
+          nix shell --inputs-from . nixpkgs#rclone --command \
+            rclone copyto "r2:$R2_BUCKET/$R2_DMG_KEY" "$dmg"
+
+          nix store add --mode flat --hash-algo sha256 "$dmg"
+
+      - name: Install VMware Fusion
+        run: nix run . -- install
+
+      - name: Run VMware contract tests
+        run: nix run .#vmware-contract-tests

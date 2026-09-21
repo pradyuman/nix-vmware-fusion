@@ -3,6 +3,9 @@ name = "nix-vmware-fusion"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+vmware-contract-tests = []
+
 [dependencies]
 anyhow = "1.0.104"
 atomic-write-file = "0.3.1"

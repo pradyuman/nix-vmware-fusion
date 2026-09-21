@@ -58,7 +58,7 @@ mod tests {
     #[test]
     fn missing_bundle_is_not_created() -> Result<()> {
         let temp_dir = tempfile::tempdir()?;
-        let bundle_path = temp_dir.path().join("example.vmwarevm");
+        let bundle_path = temp_dir.path().join("test.vmwarevm");
 
         let snapshot = inspect(&bundle_path)?;
 
@@ -71,13 +71,13 @@ mod tests {
     #[test]
     fn empty_bundle_uses_bundle_name_for_vmx() -> Result<()> {
         let temp_dir = tempfile::tempdir()?;
-        let bundle_path = temp_dir.path().join("example.vmwarevm");
+        let bundle_path = temp_dir.path().join("test.vmwarevm");
 
         fs::create_dir(&bundle_path)?;
 
         let snapshot = inspect(&bundle_path)?;
 
-        assert_eq!(snapshot.target_path, bundle_path.join("example.vmx"));
+        assert_eq!(snapshot.target_path, bundle_path.join("test.vmx"));
         assert_eq!(snapshot.raw_contents, None);
         assert!(!snapshot.target_path.try_exists()?);
 
@@ -88,7 +88,7 @@ mod tests {
     fn existing_vmx_path_and_contents_are_returned() -> Result<()> {
         let temp_dir = tempfile::tempdir()?;
         let target_path = temp_dir.path().join("custom.vmx");
-        let contents = "displayName = \"Example\"\n";
+        let contents = "displayName = \"Test VM\"\n";
 
         fs::write(&target_path, contents)?;
 
@@ -103,11 +103,11 @@ mod tests {
     #[test]
     fn disk_and_backup_files_are_not_vmx_candidates() -> Result<()> {
         let temp_dir = tempfile::tempdir()?;
-        let target_path = temp_dir.path().join("example.vmx");
+        let target_path = temp_dir.path().join("test.vmx");
 
         fs::write(&target_path, "")?;
-        fs::write(temp_dir.path().join("example.vmdk"), "")?;
-        fs::write(temp_dir.path().join("example.vmx.bak"), "")?;
+        fs::write(temp_dir.path().join("test.vmdk"), "")?;
+        fs::write(temp_dir.path().join("test.vmx.bak"), "")?;
 
         let snapshot = inspect(temp_dir.path())?;
 

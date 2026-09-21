@@ -69,7 +69,7 @@ mod tests {
     fn staged_change(prev: Option<&str>, updated_contents: &str) -> StagedChange {
         StagedChange {
             snapshot: Snapshot {
-                target_path: "example.vmx".into(),
+                target_path: "test.vmx".into(),
                 raw_contents: prev.map(str::to_owned),
             },
             updated_contents: updated_contents.to_owned(),
@@ -95,5 +95,81 @@ mod tests {
         let staged = staged_change(None, "");
 
         assert!(!staged.is_noop());
+    }
+
+    #[cfg(feature = "vmware-contract-tests")]
+    mod vmware {
+        use std::path::{Path, PathBuf};
+
+        use super::*;
+
+        const GUEST_OS: &str = "arm-other6xlinux-64";
+
+        fn create_vmx() -> Result<(tempfile::TempDir, PathBuf)> {
+            let temp_dir = tempfile::tempdir()?;
+            let vmx_path = temp_dir.path().join("test.vmx");
+
+            create(&vmx_path, GUEST_OS)?;
+
+            Ok((temp_dir, vmx_path))
+        }
+
+        fn query_entry(path: &Path, key: &str) -> Result<String> {
+            Ok(duct::cmd!(&CONFIG.dict_tool, "-q", "query", path, key).read()?)
+        }
+
+        fn assert_entry(path: &Path, key: &str, value: &str) -> Result<()> {
+            assert_eq!(query_entry(path, key)?, format!(r#"{key} = "{value}""#));
+
+            Ok(())
+        }
+
+        #[test]
+        fn vmcli_creates_vmx() -> Result<()> {
+            let (_temp_dir, vmx_path) = create_vmx()?;
+
+            assert_entry(&vmx_path, "guestOS", GUEST_OS)?;
+
+            Ok(())
+        }
+
+        #[test]
+        fn dict_tool_sets_and_updates_vmx_entries() -> Result<()> {
+            let (_temp_dir, vmx_path) = create_vmx()?;
+
+            // Test entries
+            let display_name = "Test VM";
+            let updated_display_name = "Updated Test VM";
+            let vcpus = "4";
+
+            // Seed entries
+            set_entries(
+                &vmx_path,
+                &[
+                    ("displayName", display_name.to_owned()),
+                    ("numvcpus", vcpus.to_owned()),
+                ],
+            )?;
+
+            // Set displayName again to verify that dictTool replaces the existing entry
+            set_entries(
+                &vmx_path,
+                &[("displayName", updated_display_name.to_owned())],
+            )?;
+
+            assert_entry(&vmx_path, "displayName", updated_display_name)?;
+            assert_entry(&vmx_path, "numvcpus", vcpus)?;
+
+            Ok(())
+        }
+
+        #[test]
+        fn vmcli_reports_new_vmx_as_stopped() -> Result<()> {
+            let (_temp_dir, vmx_path) = create_vmx()?;
+
+            crate::vm::ensure_stopped(&vmx_path)?;
+
+            Ok(())
+        }
     }
 }
