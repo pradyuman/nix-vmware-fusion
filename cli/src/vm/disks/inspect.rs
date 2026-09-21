@@ -22,7 +22,7 @@ struct QueriedDisk {
     backing_path_name: PathBuf,
 }
 
-pub(crate) fn inspect(disks: &VirtualDisks, vmx_path: &Path) -> Result<Snapshot> {
+pub(crate) fn inspect(vmx_path: &Path, disks: &VirtualDisks) -> Result<Snapshot> {
     Ok(Snapshot {
         configured_disks: inspect_configured_disks(disks)?,
         attached_disks: query_attached_disks(vmx_path)?,

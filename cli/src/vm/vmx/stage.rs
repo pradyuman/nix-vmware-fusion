@@ -26,7 +26,7 @@ pub(crate) fn stage(draft_path: &Path, plan: &Plan) -> Result<()> {
     Ok(())
 }
 
-fn create(path: &Path, guest_os: &str) -> Result<()> {
+pub(crate) fn create(path: &Path, guest_os: &str) -> Result<()> {
     let name = path.file_stem().context("missing virtual machine name")?;
     let directory_path = path.parent().context("missing VMX directory")?;
 
@@ -99,20 +99,11 @@ mod tests {
 
     #[cfg(feature = "vmware-contract-tests")]
     mod vmware {
-        use std::path::{Path, PathBuf};
+        use std::path::Path;
+
+        use crate::vm::test_support::{GUEST_OS, create_vmx};
 
         use super::*;
-
-        const GUEST_OS: &str = "arm-other6xlinux-64";
-
-        fn create_vmx() -> Result<(tempfile::TempDir, PathBuf)> {
-            let temp_dir = tempfile::tempdir()?;
-            let vmx_path = temp_dir.path().join("test.vmx");
-
-            create(&vmx_path, GUEST_OS)?;
-
-            Ok((temp_dir, vmx_path))
-        }
 
         fn query_entry(path: &Path, key: &str) -> Result<String> {
             Ok(duct::cmd!(&CONFIG.dict_tool, "-q", "query", path, key).read()?)

@@ -4,9 +4,7 @@ use std::collections::HashSet;
 
 use crate::vm::schema::VirtualDiskBus;
 
-use super::{Action, ConfiguredDisk, Plan, Snapshot};
-
-const BYTES_PER_GIB: u64 = 1024_u64.pow(3);
+use super::{Action, BYTES_PER_GIB, ConfiguredDisk, Plan, Snapshot};
 
 pub(crate) fn plan(snapshot: Snapshot) -> Result<Plan> {
     let canonical_paths = snapshot

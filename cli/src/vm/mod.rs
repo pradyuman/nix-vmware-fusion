@@ -8,6 +8,9 @@ mod disks;
 mod schema;
 mod vmx;
 
+#[cfg(all(test, feature = "vmware-contract-tests"))]
+mod test_support;
+
 // Inspect
 
 pub(crate) struct Snapshot {
@@ -17,7 +20,7 @@ pub(crate) struct Snapshot {
 
 fn inspect(schema: &schema::VirtualMachine) -> Result<Snapshot> {
     let vmx = vmx::inspect(schema.path.as_ref())?;
-    let disks = disks::inspect(&schema.disks, &vmx.target_path)?;
+    let disks = disks::inspect(&vmx.target_path, &schema.disks)?;
 
     Ok(Snapshot { vmx, disks })
 }

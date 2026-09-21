@@ -34,6 +34,7 @@
         name = "nix-vmware-fusion-vmware-contract-tests";
         runtimeInputs = [
           pkgs.cargo
+          pkgs.qemu-utils
           pkgs.rustc
         ];
         text = ''

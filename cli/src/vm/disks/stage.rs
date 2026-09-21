@@ -143,4 +143,187 @@ mod tests {
 
         Ok(())
     }
+
+    #[cfg(feature = "vmware-contract-tests")]
+    mod vmware {
+        use std::fs;
+        use std::path::Path;
+
+        use crate::vm::disks::{BYTES_PER_GIB, inspect};
+        use crate::vm::schema::{VirtualDisk, VirtualDiskPath, VirtualDisks};
+        use crate::vm::test_support::create_vmx;
+
+        use super::*;
+
+        const BYTES_PER_MIB: u64 = 1024_u64.pow(2);
+
+        fn create_vmdk(path: &Path, size: &str) -> Result<()> {
+            duct::cmd!(
+                &CONFIG.vdisk_manager,
+                "-c",
+                "-s",
+                size,
+                "-a",
+                "lsilogic",
+                "-t",
+                "0",
+                "-q",
+                path
+            )
+            .run()?;
+
+            Ok(())
+        }
+
+        fn create_partitioned_vmdk(directory: &Path, path: &Path, size: &str) -> Result<()> {
+            let source_path = directory.join("source.raw");
+
+            // Create a partition table so vmdkserver can report the disk capacity
+            duct::cmd!(
+                "diskutil",
+                "image",
+                "create",
+                "blank",
+                "--format",
+                "RAW",
+                "--size",
+                size,
+                "--fs",
+                "ExFAT",
+                &source_path
+            )
+            .run()?;
+
+            duct::cmd!(
+                "qemu-img",
+                "convert",
+                "-f",
+                "raw",
+                "-O",
+                "vmdk",
+                &source_path,
+                path,
+            )
+            .run()?;
+
+            Ok(())
+        }
+
+        fn configured_disks(path: &Path, size: NonZeroU64) -> VirtualDisks {
+            VirtualDisks::from([(
+                "primary".to_owned(),
+                VirtualDisk {
+                    path: VirtualDiskPath::try_new(path.to_owned()).expect("valid disk path"),
+                    size,
+                    bus: VirtualDiskBus::Nvme,
+                },
+            )])
+        }
+
+        #[test]
+        fn vmcli_manages_disk_attachments() -> Result<()> {
+            let (temp_dir, draft_path) = create_vmx()?;
+            let disk_path = temp_dir.path().join("managed.vmdk");
+
+            create_vmdk(&disk_path, "1MB")?;
+            let canonical_path = fs::canonicalize(&disk_path)?;
+
+            // Attach the disk over NVMe
+            stage(
+                &draft_path,
+                Plan {
+                    actions: vec![Action::Attach {
+                        path: disk_path.clone(),
+                        to: VirtualDiskBus::Nvme,
+                    }],
+                },
+            )?;
+
+            let attached = inspect(&draft_path, &VirtualDisks::new())?.attached_disks;
+            assert_eq!(attached.len(), 1);
+            assert!(attached[0].label.starts_with("nvme"));
+            assert_eq!(
+                attached[0].canonical_path.as_deref(),
+                Some(canonical_path.as_path())
+            );
+
+            // Move the attached disk to SATA
+            let nvme_label = attached[0].label.clone();
+            stage(
+                &draft_path,
+                Plan {
+                    actions: vec![Action::Move {
+                        from: nvme_label,
+                        to: VirtualDiskBus::Sata,
+                    }],
+                },
+            )?;
+
+            let attached = inspect(&draft_path, &VirtualDisks::new())?.attached_disks;
+            assert_eq!(attached.len(), 1);
+            assert!(attached[0].label.starts_with("sata"));
+            assert_eq!(
+                attached[0].canonical_path.as_deref(),
+                Some(canonical_path.as_path())
+            );
+
+            // Detach the disk
+            stage(
+                &draft_path,
+                Plan {
+                    actions: vec![Action::Detach {
+                        label: attached[0].label.clone(),
+                    }],
+                },
+            )?;
+
+            assert!(
+                inspect(&draft_path, &VirtualDisks::new())?
+                    .attached_disks
+                    .is_empty()
+            );
+
+            Ok(())
+        }
+
+        #[test]
+        fn vmware_tools_report_and_expand_disk_capacity() -> Result<()> {
+            let temp_dir = tempfile::tempdir()?;
+            let vmx_path = temp_dir.path().join("missing.vmx");
+            let disk_path = temp_dir.path().join("managed.vmdk");
+            let expanded_size = NonZeroU64::new(1).expect("non-zero disk capacity");
+
+            create_partitioned_vmdk(temp_dir.path(), &disk_path, "10MiB")?;
+
+            let configured = configured_disks(&disk_path, expanded_size);
+
+            // Inspect the initial capacity
+            let snapshot = inspect(&vmx_path, &configured)?;
+            assert_eq!(
+                snapshot.configured_disks[0].current_bytes.get(),
+                10 * BYTES_PER_MIB
+            );
+
+            // Expand the disk
+            stage(
+                &vmx_path,
+                Plan {
+                    actions: vec![Action::Expand {
+                        path: disk_path.clone(),
+                        size: expanded_size,
+                    }],
+                },
+            )?
+            .commit()?;
+
+            // Inspect the expanded capacity
+            let snapshot = inspect(&vmx_path, &configured)?;
+            assert_eq!(
+                snapshot.configured_disks[0].current_bytes.get(),
+                expanded_size.get() * BYTES_PER_GIB
+            );
+
+            Ok(())
+        }
+    }
 }

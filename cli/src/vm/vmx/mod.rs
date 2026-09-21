@@ -10,6 +10,9 @@ pub(crate) use plan::plan;
 mod stage;
 pub(crate) use stage::stage;
 
+#[cfg(all(test, feature = "vmware-contract-tests"))]
+pub(crate) use stage::create;
+
 // Inspect
 
 #[derive(Debug)]
