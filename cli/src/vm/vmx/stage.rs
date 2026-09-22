@@ -141,14 +141,5 @@ mod tests {
 
             Ok(())
         }
-
-        #[test]
-        fn vmcli_reports_new_vmx_as_stopped() -> Result<()> {
-            let (_temp_dir, vmx_path) = create_vmx()?;
-
-            crate::vm::ensure_stopped(&vmx_path)?;
-
-            Ok(())
-        }
     }
 }

@@ -42,7 +42,6 @@
           export NIX_VMWARE_FUSION_DICT_TOOL=${pkgs.lib.getExe' localPkgs.commandLineTools "dictTool"}
           export NIX_VMWARE_FUSION_QEMU_IMG=${pkgs.lib.getExe' pkgs.qemu-utils "qemu-img"}
           export NIX_VMWARE_FUSION_VDISK_MANAGER=${pkgs.lib.getExe' localPkgs.commandLineTools "vmware-vdiskmanager"}
-          export NIX_VMWARE_FUSION_VMDK_SERVER=${pkgs.lib.getExe' localPkgs.commandLineTools "vmware-vmdkserver"}
           export NIX_VMWARE_FUSION_VMCLI=${pkgs.lib.getExe' localPkgs.commandLineTools "vmcli"}
 
           exec cargo test --locked --manifest-path cli/Cargo.toml --features vmware-tests "$@"

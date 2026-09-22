@@ -2,7 +2,7 @@ use std::fs;
 use std::num::NonZeroU64;
 use std::path::Path;
 
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, Result, bail, ensure};
 
 use crate::config::CONFIG;
 
@@ -14,15 +14,48 @@ impl StagedChange {
     }
 
     pub(crate) fn commit(self) -> Result<()> {
-        self.commit_actions.into_iter().try_for_each(|action| {
-            match action {
-                CommitAction::Expand { path, size } => expand(&path, size)?,
-                CommitAction::Convert { path, format } => convert(&path, format)?,
-            }
-
-            Ok(())
-        })
+        self.commit_actions
+            .into_iter()
+            .try_for_each(|action| match action {
+                CommitAction::Create { path, size, format } => create(&path, size, format),
+                CommitAction::Expand { path, size } => expand(&path, size),
+                CommitAction::Convert { path, format } => convert(&path, format),
+            })
     }
+}
+
+fn create(path: &Path, size: NonZeroU64, format: DiskFormat) -> Result<()> {
+    ensure!(
+        !path.try_exists()?,
+        "refusing to replace existing disk {}",
+        path.display()
+    );
+
+    let directory = path.parent().context("missing disk directory")?;
+    fs::create_dir_all(directory)
+        .with_context(|| format!("could not create disk directory {}", directory.display()))?;
+
+    duct::cmd!(
+        &CONFIG.vdisk_manager,
+        "-c",
+        "-s",
+        format!("{size}GB"),
+        "-a",
+        "lsilogic",
+        "-t",
+        format.vdisk_type(),
+        "-q",
+        path
+    )
+    .run()
+    .with_context(|| {
+        format!(
+            "could not create {size} GiB {format} disk {}",
+            path.display()
+        )
+    })?;
+
+    Ok(())
 }
 
 fn expand(path: &Path, size: NonZeroU64) -> Result<()> {
@@ -140,10 +173,54 @@ fn move_disk(from: &Path, to: &Path) -> Result<()> {
 
 #[cfg(all(test, feature = "vmware-tests"))]
 mod tests {
-    use crate::vm::disks::inspect::read_format;
-    use crate::vm::test_support::create_partitioned_vmdk;
+    use crate::vm::disks::BYTES_PER_GIB;
+    use crate::vm::disks::inspect::read_state;
+    use crate::vm::test_support::create_vmdk;
 
     use super::*;
+
+    const BYTES_PER_MIB: u64 = 1024_u64.pow(2);
+
+    #[test]
+    fn vmware_tools_create_disk_in_missing_directory() -> Result<()> {
+        let temp_dir = tempfile::tempdir()?;
+        let bundle_path = temp_dir.path().join("test.vmwarevm");
+        let disk_path = bundle_path.join("managed.vmdk");
+        let size = NonZeroU64::new(1).expect("non-zero disk capacity");
+        let format = DiskFormat::SplitSparse;
+
+        assert!(!bundle_path.try_exists()?);
+
+        create(&disk_path, size, format)?;
+
+        let state = read_state(&disk_path)?;
+        assert_eq!(state.capacity_bytes.get(), size.get() * BYTES_PER_GIB);
+        assert_eq!(state.format, format);
+
+        Ok(())
+    }
+
+    #[test]
+    fn vmware_tools_expand_disk_capacity() -> Result<()> {
+        let temp_dir = tempfile::tempdir()?;
+        let disk_path = temp_dir.path().join("managed.vmdk");
+        let expanded_size = NonZeroU64::new(1).expect("non-zero disk capacity");
+
+        create_vmdk(&disk_path, "10MB")?;
+
+        let initial_state = read_state(&disk_path)?;
+        assert_eq!(initial_state.capacity_bytes.get(), 10 * BYTES_PER_MIB);
+
+        expand(&disk_path, expanded_size)?;
+
+        let expanded_state = read_state(&disk_path)?;
+        assert_eq!(
+            expanded_state.capacity_bytes.get(),
+            expanded_size.get() * BYTES_PER_GIB,
+        );
+
+        Ok(())
+    }
 
     #[test]
     fn vmware_tools_convert_disk_formats() -> Result<()> {
@@ -156,19 +233,16 @@ mod tests {
             DiskFormat::Sparse,
         ];
 
-        create_partitioned_vmdk(&disk_path, "10MiB")?;
-        assert_eq!(read_format(&disk_path)?, DiskFormat::Sparse);
+        create_vmdk(&disk_path, "10MB")?;
+
+        let initial_state = read_state(&disk_path)?;
+        assert_eq!(initial_state.format, DiskFormat::Sparse);
 
         formats.into_iter().try_for_each(|format| -> Result<()> {
-            StagedChange {
-                commit_actions: vec![CommitAction::Convert {
-                    path: disk_path.clone(),
-                    format,
-                }],
-            }
-            .commit()?;
+            convert(&disk_path, format)?;
 
-            assert_eq!(read_format(&disk_path)?, format);
+            let converted_state = read_state(&disk_path)?;
+            assert_eq!(converted_state.format, format);
 
             Ok(())
         })

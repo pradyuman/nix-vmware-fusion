@@ -25,7 +25,7 @@ pub(crate) type DiskLabel = String;
 
 #[derive(Debug)]
 pub(crate) struct Snapshot {
-    pub configured_disks: Vec<ConfiguredDisk>,
+    pub inspected_disks: Vec<InspectedDisk>,
     pub attached_disks: Vec<AttachedDisk>,
 }
 
@@ -35,11 +35,16 @@ pub(crate) struct ConfiguredDisk {
     pub size: NonZeroU64,
     pub bus: DiskBus,
     pub format: DiskFormat,
-    pub canonical_path: PathBuf,
-    pub current_state: DiskState,
 }
 
 #[derive(Debug)]
+pub(crate) struct InspectedDisk {
+    pub configured: ConfiguredDisk,
+    pub identity_path: PathBuf,
+    pub current_state: Option<DiskState>,
+}
+
+#[derive(Debug, PartialEq)]
 pub(crate) struct DiskState {
     pub capacity_bytes: NonZeroU64,
     pub format: DiskFormat,
@@ -60,11 +65,30 @@ pub(crate) struct Plan {
 
 #[derive(Debug)]
 pub(crate) enum Action {
-    Move { from: DiskLabel, to: DiskBus },
-    Attach { path: PathBuf, to: DiskBus },
-    Detach { label: DiskLabel },
-    Expand { path: PathBuf, size: NonZeroU64 },
-    Convert { path: PathBuf, format: DiskFormat },
+    Create {
+        path: PathBuf,
+        size: NonZeroU64,
+        format: DiskFormat,
+    },
+    Move {
+        from: DiskLabel,
+        to: DiskBus,
+    },
+    Attach {
+        path: PathBuf,
+        to: DiskBus,
+    },
+    Detach {
+        label: DiskLabel,
+    },
+    Expand {
+        path: PathBuf,
+        size: NonZeroU64,
+    },
+    Convert {
+        path: PathBuf,
+        format: DiskFormat,
+    },
 }
 
 // Stage
@@ -73,7 +97,19 @@ pub(crate) struct StagedChange {
     commit_actions: Vec<CommitAction>,
 }
 
+#[derive(Debug, PartialEq)]
 enum CommitAction {
-    Expand { path: PathBuf, size: NonZeroU64 },
-    Convert { path: PathBuf, format: DiskFormat },
+    Create {
+        path: PathBuf,
+        size: NonZeroU64,
+        format: DiskFormat,
+    },
+    Expand {
+        path: PathBuf,
+        size: NonZeroU64,
+    },
+    Convert {
+        path: PathBuf,
+        format: DiskFormat,
+    },
 }

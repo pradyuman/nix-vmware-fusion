@@ -12,7 +12,6 @@ pub(crate) struct Config {
     pub dict_tool: PathBuf,
     pub qemu_img: PathBuf,
     pub vdisk_manager: PathBuf,
-    pub vmdk_server: PathBuf,
     pub vmcli: PathBuf,
 }
 

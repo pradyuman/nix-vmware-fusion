@@ -212,8 +212,6 @@ files.
 > [!NOTE]
 > When adding an existing VM to your configuration, make sure to declare any
 > existing disks unless you want them detached.
->
-> Disk creation is not currently supported.
 
 ## Remove VMware Fusion
 

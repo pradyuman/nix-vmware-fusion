@@ -134,7 +134,7 @@ mod tests {
 
     use super::disks::BYTES_PER_GIB;
     use super::schema::VirtualMachine;
-    use super::test_support::{GUEST_OS, assert_vmx_entry, create_partitioned_vmdk};
+    use super::test_support::{GUEST_OS, assert_vmx_entry, create_vmdk, create_vmx};
     use super::*;
 
     fn virtual_machine_ir(bundle_path: &Path, disk_path: &Path) -> serde_json::Value {
@@ -162,14 +162,21 @@ mod tests {
     }
 
     #[test]
+    fn vmcli_reports_new_vmx_as_stopped() -> Result<()> {
+        let (_temp_dir, vmx_path) = create_vmx()?;
+
+        ensure_stopped(&vmx_path)?;
+
+        Ok(())
+    }
+
+    #[test]
     fn applies_virtual_machine_configuration() -> Result<()> {
         let temp_dir = tempfile::tempdir()?;
         let bundle_path = temp_dir.path().join("test.vmwarevm");
         let vmx_path = bundle_path.join("test.vmx");
         let disk_path = temp_dir.path().join("managed.vmdk");
         let ir_path = temp_dir.path().join("virtual-machine-ir.json");
-
-        create_partitioned_vmdk(&disk_path, "10MiB")?;
 
         let ir = virtual_machine_ir(&bundle_path, &disk_path);
         write_ir_file(&ir_path, &ir)?;
@@ -189,8 +196,10 @@ mod tests {
         let attached = &snapshot.disks.attached_disks;
 
         assert_eq!(
-            snapshot.disks.configured_disks[0]
+            snapshot.disks.inspected_disks[0]
                 .current_state
+                .as_ref()
+                .expect("existing disk state")
                 .capacity_bytes
                 .get(),
             BYTES_PER_GIB
@@ -218,7 +227,7 @@ mod tests {
         let disk_path = temp_dir.path().join("managed.vmdk");
         let ir_path = temp_dir.path().join("virtual-machine-ir.json");
 
-        create_partitioned_vmdk(&disk_path, "10MiB")?;
+        create_vmdk(&disk_path, "10MB")?;
 
         // Create the initial virtual machine
         let mut ir = virtual_machine_ir(&bundle_path, &disk_path);

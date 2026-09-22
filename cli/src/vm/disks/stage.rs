@@ -19,6 +19,9 @@ pub(crate) fn stage(draft_path: &Path, plan: Plan) -> Result<StagedChange> {
         .into_iter()
         .map(|action| -> Result<Option<CommitAction>> {
             let commit_action = match action {
+                Action::Create { path, size, format } => {
+                    Some(CommitAction::Create { path, size, format })
+                }
                 Action::Move { from, to } => {
                     let target = find_first_free(draft_path, to)?;
 
@@ -65,14 +68,8 @@ pub(crate) fn stage(draft_path: &Path, plan: Plan) -> Result<StagedChange> {
 
                     None
                 }
-                Action::Expand { path, size } => {
-                    // Defer changes to the real disk until commit checks the VM is stopped
-                    Some(CommitAction::Expand { path, size })
-                }
-                Action::Convert { path, format } => {
-                    // Defer changes to the real disk until commit checks the VM is stopped
-                    Some(CommitAction::Convert { path, format })
-                }
+                Action::Expand { path, size } => Some(CommitAction::Expand { path, size }),
+                Action::Convert { path, format } => Some(CommitAction::Convert { path, format }),
             };
 
             Ok(commit_action)
@@ -127,49 +124,49 @@ mod tests {
     use super::*;
 
     #[test]
-    fn expansion_is_staged_for_commit() -> Result<()> {
+    fn disk_changes_are_staged_for_commit() -> Result<()> {
         let disk_path = Path::new("/disks/system.vmdk");
         let size = NonZeroU64::new(12).expect("non-zero disk capacity");
-        let plan = Plan {
-            actions: vec![Action::Expand {
-                path: disk_path.to_owned(),
-                size,
-            }],
-        };
-
-        let staged = stage(Path::new("unused.vmx"), plan)?;
-
-        assert!(matches!(
-            staged.commit_actions.as_slice(),
-            [CommitAction::Expand {
-                path,
-                size: staged_size,
-            }] if path == disk_path && *staged_size == size
-        ));
-
-        Ok(())
-    }
-
-    #[test]
-    fn conversion_is_staged_for_commit() -> Result<()> {
-        let disk_path = Path::new("/disks/system.vmdk");
         let format = DiskFormat::SplitSparse;
+
         let plan = Plan {
-            actions: vec![Action::Convert {
-                path: disk_path.to_owned(),
-                format,
-            }],
+            actions: vec![
+                Action::Create {
+                    path: disk_path.to_owned(),
+                    size,
+                    format,
+                },
+                Action::Expand {
+                    path: disk_path.to_owned(),
+                    size,
+                },
+                Action::Convert {
+                    path: disk_path.to_owned(),
+                    format,
+                },
+            ],
         };
 
         let staged = stage(Path::new("unused.vmx"), plan)?;
 
-        assert!(matches!(
-            staged.commit_actions.as_slice(),
-            [CommitAction::Convert {
-                path,
-                format: staged_format,
-            }] if path == disk_path && *staged_format == format
-        ));
+        assert_eq!(
+            staged.commit_actions,
+            vec![
+                CommitAction::Create {
+                    path: disk_path.to_owned(),
+                    size,
+                    format,
+                },
+                CommitAction::Expand {
+                    path: disk_path.to_owned(),
+                    size,
+                },
+                CommitAction::Convert {
+                    path: disk_path.to_owned(),
+                    format,
+                },
+            ]
+        );
 
         Ok(())
     }
@@ -177,33 +174,12 @@ mod tests {
     #[cfg(feature = "vmware-tests")]
     mod vmware {
         use std::fs;
-        use std::path::Path;
 
-        use crate::vm::disks::{BYTES_PER_GIB, inspect};
-        use crate::vm::schema::{DiskPath, VirtualDisk, VirtualDisks};
-        use crate::vm::test_support::{create_partitioned_vmdk, create_vmx};
+        use crate::vm::disks::inspect;
+        use crate::vm::schema::VirtualDisks;
+        use crate::vm::test_support::{create_vmdk, create_vmx};
 
         use super::*;
-
-        const BYTES_PER_MIB: u64 = 1024_u64.pow(2);
-
-        fn create_vmdk(path: &Path, size: &str) -> Result<()> {
-            duct::cmd!(
-                &CONFIG.vdisk_manager,
-                "-c",
-                "-s",
-                size,
-                "-a",
-                "lsilogic",
-                "-t",
-                "0",
-                "-q",
-                path
-            )
-            .run()?;
-
-            Ok(())
-        }
 
         #[test]
         fn vmcli_manages_disk_attachments() -> Result<()> {
@@ -266,56 +242,24 @@ mod tests {
         }
 
         #[test]
-        fn vmware_tools_report_and_expand_disk_capacity() -> Result<()> {
-            let temp_dir = tempfile::tempdir()?;
-            let vmx_path = temp_dir.path().join("missing.vmx");
-            let disk_path = temp_dir.path().join("managed.vmdk");
-            let expanded_size = NonZeroU64::new(1).expect("non-zero disk capacity");
+        fn vmcli_configures_missing_disk_backing_path() -> Result<()> {
+            let (temp_dir, draft_path) = create_vmx()?;
+            let disk_path = temp_dir.path().join("missing/test.vmdk");
 
-            create_partitioned_vmdk(&disk_path, "10MiB")?;
-
-            let configured = VirtualDisks::from([(
-                "primary".to_owned(),
-                VirtualDisk {
-                    path: DiskPath::try_new(disk_path.clone()).expect("valid disk path"),
-                    size: expanded_size,
-                    bus: DiskBus::Nvme,
-                    preallocate: false,
-                    split: false,
-                },
-            )]);
-
-            // Inspect the initial capacity
-            let snapshot = inspect(&vmx_path, &configured)?;
-            assert_eq!(
-                snapshot.configured_disks[0]
-                    .current_state
-                    .capacity_bytes
-                    .get(),
-                10 * BYTES_PER_MIB
-            );
-
-            // Expand the disk
             stage(
-                &vmx_path,
+                &draft_path,
                 Plan {
-                    actions: vec![Action::Expand {
+                    actions: vec![Action::Attach {
                         path: disk_path,
-                        size: expanded_size,
+                        to: DiskBus::Nvme,
                     }],
                 },
-            )?
-            .commit()?;
+            )?;
 
-            // Inspect the expanded capacity
-            let snapshot = inspect(&vmx_path, &configured)?;
-            assert_eq!(
-                snapshot.configured_disks[0]
-                    .current_state
-                    .capacity_bytes
-                    .get(),
-                expanded_size.get() * BYTES_PER_GIB
-            );
+            let attached = inspect(&draft_path, &VirtualDisks::new())?.attached_disks;
+            assert_eq!(attached.len(), 1);
+            assert!(attached[0].label.starts_with("nvme"));
+            assert!(attached[0].canonical_path.is_none());
 
             Ok(())
         }
