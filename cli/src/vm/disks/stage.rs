@@ -207,7 +207,7 @@ mod tests {
                 },
             )?;
 
-            let attached = inspect(&draft_path, &VirtualDisks::new())?.attached_disks;
+            let attached = inspect(&draft_path, &VirtualDisks::new())?.disk_attachments;
             assert_eq!(attached.len(), 1);
             assert!(attached[0].label.as_ref().starts_with("nvme"));
             assert_eq!(attached[0].canonical_path.as_ref(), Some(&canonical_path));
@@ -224,7 +224,7 @@ mod tests {
                 },
             )?;
 
-            let attached = inspect(&draft_path, &VirtualDisks::new())?.attached_disks;
+            let attached = inspect(&draft_path, &VirtualDisks::new())?.disk_attachments;
             assert_eq!(attached.len(), 1);
             assert!(attached[0].label.as_ref().starts_with("sata"));
             assert_eq!(attached[0].canonical_path, Some(canonical_path));
@@ -241,7 +241,7 @@ mod tests {
 
             assert!(
                 inspect(&draft_path, &VirtualDisks::new())?
-                    .attached_disks
+                    .disk_attachments
                     .is_empty()
             );
 
@@ -263,7 +263,7 @@ mod tests {
                 },
             )?;
 
-            let attached = inspect(&draft_path, &VirtualDisks::new())?.attached_disks;
+            let attached = inspect(&draft_path, &VirtualDisks::new())?.disk_attachments;
             assert_eq!(attached.len(), 1);
             assert!(attached[0].label.as_ref().starts_with("nvme"));
             assert!(attached[0].canonical_path.is_none());

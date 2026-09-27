@@ -33,7 +33,7 @@ pub(crate) struct Plan {
 }
 
 fn plan(schema: &schema::VirtualMachine, snapshot: Snapshot) -> Result<Plan> {
-    let disks = disks::plan(snapshot.disks)?;
+    let disks = disks::plan(&schema.disks, snapshot.disks)?;
     let vmx = vmx::plan(schema, snapshot.vmx);
 
     Ok(Plan { vmx, disks })
@@ -193,15 +193,10 @@ mod tests {
 
         let schema = serde_json::from_value::<VirtualMachine>(ir)?;
         let snapshot = inspect(&schema)?;
-        let attached = &snapshot.disks.attached_disks;
+        let attached = &snapshot.disks.disk_attachments;
 
         assert_eq!(
-            snapshot.disks.inspected_disks[0]
-                .current_state
-                .as_ref()
-                .expect("existing disk state")
-                .capacity_bytes
-                .get(),
+            snapshot.disks.disk_images[0].state.capacity_bytes.get(),
             BYTES_PER_GIB
         );
         assert_eq!(attached.len(), 1);
@@ -261,7 +256,7 @@ mod tests {
         )?;
 
         let schema = serde_json::from_value::<VirtualMachine>(ir)?;
-        let attached = inspect(&schema)?.disks.attached_disks;
+        let attached = inspect(&schema)?.disks.disk_attachments;
 
         assert_eq!(attached.len(), 1);
         assert!(attached[0].label.as_ref().starts_with(bus));

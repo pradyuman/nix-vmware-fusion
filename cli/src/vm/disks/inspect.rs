@@ -4,11 +4,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::config::CONFIG;
-use crate::vm::schema::{VirtualDisk, VirtualDisks};
+use crate::vm::schema::VirtualDisks;
 
-use super::{
-    AttachedDisk, ConfiguredDisk, DiskFormat, DiskLabel, DiskState, InspectedDisk, Snapshot,
-};
+use super::{DiskAttachment, DiskFormat, DiskImage, DiskLabel, DiskState, Snapshot};
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -25,18 +23,20 @@ struct VmcliDisk {
 
 pub(crate) fn inspect(vmx_path: &Path, disks: &VirtualDisks) -> Result<Snapshot> {
     Ok(Snapshot {
-        inspected_disks: inspect_disks(disks)?,
-        attached_disks: query_attached_disks(vmx_path)?,
+        disk_images: inspect_disks(disks)?,
+        disk_attachments: query_disk_attachments(vmx_path)?,
     })
 }
 
-fn inspect_disks(disks: &VirtualDisks) -> Result<Vec<InspectedDisk>> {
-    disks.values().map(inspect_disk).collect()
+fn inspect_disks(disks: &VirtualDisks) -> Result<Vec<DiskImage>> {
+    disks
+        .values()
+        .filter_map(|disk| inspect_disk(disk.path.as_ref()).transpose())
+        .collect()
 }
 
-fn inspect_disk(disk: &VirtualDisk) -> Result<InspectedDisk> {
-    let path = disk.path.as_ref();
-    let current_state = match fs::metadata(path) {
+fn inspect_disk(path: &Path) -> Result<Option<DiskImage>> {
+    match fs::metadata(path) {
         Ok(metadata) => {
             ensure!(
                 metadata.is_file(),
@@ -44,35 +44,18 @@ fn inspect_disk(disk: &VirtualDisk) -> Result<InspectedDisk> {
                 path.display()
             );
 
-            Some(
-                read_state(path)
+            Ok(Some(DiskImage {
+                path: path.to_owned(),
+                canonical_path: fs::canonicalize(path)?,
+                state: read_state(path)
                     .with_context(|| format!("could not inspect disk {}", path.display()))?,
-            )
+            }))
         }
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
         Err(error) => {
-            return Err(error)
-                .with_context(|| format!("could not inspect disk {}", path.display()));
+            Err(error).with_context(|| format!("could not inspect disk {}", path.display()))
         }
-    };
-
-    // Canonicalize existing paths so aliases and symlinks identify the same disk
-    let identity_path = if current_state.is_some() {
-        fs::canonicalize(path)?
-    } else {
-        path.clone()
-    };
-
-    Ok(InspectedDisk {
-        configured: ConfiguredDisk {
-            path: path.clone(),
-            size: disk.size,
-            bus: disk.bus,
-            format: DiskFormat::from_options(disk.preallocate, disk.split),
-        },
-        identity_path,
-        current_state,
-    })
+    }
 }
 
 pub(super) fn read_state(path: &Path) -> Result<DiskState> {
@@ -105,7 +88,7 @@ pub(super) fn read_state(path: &Path) -> Result<DiskState> {
     })
 }
 
-fn query_attached_disks(vmx_path: &Path) -> Result<Vec<AttachedDisk>> {
+fn query_disk_attachments(vmx_path: &Path) -> Result<Vec<DiskAttachment>> {
     if !vmx_path.try_exists()? {
         return Ok(Vec::new());
     }
@@ -122,7 +105,7 @@ fn query_attached_disks(vmx_path: &Path) -> Result<Vec<AttachedDisk>> {
         .disks
         .into_iter()
         .map(|disk| {
-            Ok(AttachedDisk {
+            Ok(DiskAttachment {
                 label: disk.label,
                 canonical_path: canonicalize_if_exists(&disk.backing_path_name)?,
             })
@@ -131,11 +114,10 @@ fn query_attached_disks(vmx_path: &Path) -> Result<Vec<AttachedDisk>> {
 }
 
 fn canonicalize_if_exists(path: &Path) -> Result<Option<PathBuf>> {
-    Ok(if path.try_exists()? {
-        Some(fs::canonicalize(path)?)
-    } else {
-        None
-    })
+    Ok(path
+        .try_exists()?
+        .then(|| fs::canonicalize(path))
+        .transpose()?)
 }
 
 #[cfg(all(test, feature = "vmware-tests"))]

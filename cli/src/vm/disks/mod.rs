@@ -39,23 +39,15 @@ impl DiskLabel {
 
 #[derive(Debug)]
 pub(crate) struct Snapshot {
-    pub inspected_disks: Vec<InspectedDisk>,
-    pub attached_disks: Vec<AttachedDisk>,
+    pub disk_images: Vec<DiskImage>,
+    pub disk_attachments: Vec<DiskAttachment>,
 }
 
 #[derive(Debug)]
-pub(crate) struct ConfiguredDisk {
+pub(crate) struct DiskImage {
     pub path: PathBuf,
-    pub size: NonZeroU64,
-    pub bus: DiskBus,
-    pub format: DiskFormat,
-}
-
-#[derive(Debug)]
-pub(crate) struct InspectedDisk {
-    pub configured: ConfiguredDisk,
-    pub identity_path: PathBuf,
-    pub current_state: Option<DiskState>,
+    pub canonical_path: PathBuf,
+    pub state: DiskState,
 }
 
 #[derive(Debug, PartialEq)]
@@ -65,7 +57,7 @@ pub(crate) struct DiskState {
 }
 
 #[derive(Debug)]
-pub(crate) struct AttachedDisk {
+pub(crate) struct DiskAttachment {
     pub label: DiskLabel,
     pub canonical_path: Option<PathBuf>,
 }
