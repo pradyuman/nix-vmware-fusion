@@ -6,7 +6,9 @@ use std::path::{Path, PathBuf};
 use crate::config::CONFIG;
 use crate::vm::schema::{VirtualDisk, VirtualDisks};
 
-use super::{AttachedDisk, ConfiguredDisk, DiskFormat, DiskState, InspectedDisk, Snapshot};
+use super::{
+    AttachedDisk, ConfiguredDisk, DiskFormat, DiskLabel, DiskState, InspectedDisk, Snapshot,
+};
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -17,7 +19,7 @@ struct VmcliDiskQuery {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct VmcliDisk {
-    label: String,
+    label: DiskLabel,
     backing_path_name: PathBuf,
 }
 

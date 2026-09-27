@@ -25,9 +25,16 @@ pub(crate) fn stage(draft_path: &Path, plan: Plan) -> Result<StagedChange> {
                 Action::Move { from, to } => {
                     let target = find_first_free(draft_path, to)?;
 
-                    duct::cmd!(&CONFIG.vmcli, draft_path, "disk", "move", &from, &target)
-                        .run()
-                        .with_context(|| format!("could not move disk {from} to {target}"))?;
+                    duct::cmd!(
+                        &CONFIG.vmcli,
+                        draft_path,
+                        "disk",
+                        "move",
+                        from.as_ref(),
+                        target.as_ref()
+                    )
+                    .run()
+                    .with_context(|| format!("could not move disk {from} to {target}"))?;
 
                     None
                 }
@@ -40,7 +47,7 @@ pub(crate) fn stage(draft_path: &Path, plan: Plan) -> Result<StagedChange> {
                         draft_path,
                         "disk",
                         "setbackinginfo",
-                        &label,
+                        label.as_ref(),
                         "disk",
                         &path,
                         "false"
@@ -53,7 +60,7 @@ pub(crate) fn stage(draft_path: &Path, plan: Plan) -> Result<StagedChange> {
                         draft_path,
                         "disk",
                         "setpresent",
-                        &label,
+                        label.as_ref(),
                         "true"
                     )
                     .run()
@@ -62,7 +69,7 @@ pub(crate) fn stage(draft_path: &Path, plan: Plan) -> Result<StagedChange> {
                     None
                 }
                 Action::Detach { label } => {
-                    duct::cmd!(&CONFIG.vmcli, draft_path, "disk", "purge", &label)
+                    duct::cmd!(&CONFIG.vmcli, draft_path, "disk", "purge", label.as_ref())
                         .run()
                         .with_context(|| format!("could not detach disk {label}"))?;
 
@@ -202,7 +209,7 @@ mod tests {
 
             let attached = inspect(&draft_path, &VirtualDisks::new())?.attached_disks;
             assert_eq!(attached.len(), 1);
-            assert!(attached[0].label.starts_with("nvme"));
+            assert!(attached[0].label.as_ref().starts_with("nvme"));
             assert_eq!(attached[0].canonical_path.as_ref(), Some(&canonical_path));
 
             // Move the attached disk to SATA
@@ -219,7 +226,7 @@ mod tests {
 
             let attached = inspect(&draft_path, &VirtualDisks::new())?.attached_disks;
             assert_eq!(attached.len(), 1);
-            assert!(attached[0].label.starts_with("sata"));
+            assert!(attached[0].label.as_ref().starts_with("sata"));
             assert_eq!(attached[0].canonical_path, Some(canonical_path));
 
             // Detach the disk
@@ -258,7 +265,7 @@ mod tests {
 
             let attached = inspect(&draft_path, &VirtualDisks::new())?.attached_disks;
             assert_eq!(attached.len(), 1);
-            assert!(attached[0].label.starts_with("nvme"));
+            assert!(attached[0].label.as_ref().starts_with("nvme"));
             assert!(attached[0].canonical_path.is_none());
 
             Ok(())

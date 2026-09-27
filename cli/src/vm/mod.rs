@@ -205,7 +205,7 @@ mod tests {
             BYTES_PER_GIB
         );
         assert_eq!(attached.len(), 1);
-        assert!(attached[0].label.starts_with("nvme"));
+        assert!(attached[0].label.as_ref().starts_with("nvme"));
         assert_eq!(
             attached[0].canonical_path,
             Some(fs::canonicalize(&disk_path)?)
@@ -264,7 +264,7 @@ mod tests {
         let attached = inspect(&schema)?.disks.attached_disks;
 
         assert_eq!(attached.len(), 1);
-        assert!(attached[0].label.starts_with(bus));
+        assert!(attached[0].label.as_ref().starts_with(bus));
         assert_eq!(
             attached[0].canonical_path,
             Some(fs::canonicalize(&disk_path)?)

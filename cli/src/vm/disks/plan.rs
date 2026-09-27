@@ -2,8 +2,6 @@ use anyhow::{Context, Result, bail, ensure};
 use std::cmp::Ordering;
 use std::collections::HashSet;
 
-use crate::vm::schema::DiskBus;
-
 use super::{Action, BYTES_PER_GIB, InspectedDisk, Plan, Snapshot};
 
 pub(crate) fn plan(snapshot: Snapshot) -> Result<Plan> {
@@ -27,9 +25,7 @@ pub(crate) fn plan(snapshot: Snapshot) -> Result<Plan> {
 
         match attached {
             Some(attached) => {
-                let bus = bus_from_label(&attached.label);
-
-                (bus != Some(configured.bus)).then(|| Action::Move {
+                (attached.label.bus() != Some(configured.bus)).then(|| Action::Move {
                     from: attached.label.clone(),
                     to: configured.bus,
                 })
@@ -118,22 +114,15 @@ fn plan_expansion(disk: &InspectedDisk) -> Result<Option<Action>> {
     }
 }
 
-fn bus_from_label(label: &str) -> Option<DiskBus> {
-    if label.starts_with("nvme") {
-        Some(DiskBus::Nvme)
-    } else if label.starts_with("sata") {
-        Some(DiskBus::Sata)
-    } else {
-        None
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use std::num::NonZeroU64;
     use std::path::Path;
 
-    use crate::vm::disks::{AttachedDisk, ConfiguredDisk, DiskFormat, DiskState, InspectedDisk};
+    use crate::vm::disks::{
+        AttachedDisk, ConfiguredDisk, DiskFormat, DiskLabel, DiskState, InspectedDisk,
+    };
+    use crate::vm::schema::DiskBus;
 
     use super::*;
 
@@ -167,7 +156,7 @@ mod tests {
 
     fn attached_disk(path: &Path, label: &str) -> AttachedDisk {
         AttachedDisk {
-            label: label.to_owned(),
+            label: DiskLabel::new(label),
             canonical_path: Some(path.to_owned()),
         }
     }
@@ -200,7 +189,7 @@ mod tests {
             [Action::Move {
                 from,
                 to: DiskBus::Sata,
-            }] if from == "nvme0:0"
+            }] if from.as_ref() == "nvme0:0"
         ));
 
         Ok(())
@@ -271,7 +260,7 @@ mod tests {
 
         assert!(matches!(
             plan.actions.as_slice(),
-            [Action::Detach { label }] if label == "nvme0:0"
+            [Action::Detach { label }] if label.as_ref() == "nvme0:0"
         ));
 
         Ok(())
@@ -295,7 +284,7 @@ mod tests {
                     path,
                     to: DiskBus::Nvme,
                 },
-            ] if label == "nvme0:0" && path == new_path
+            ] if label.as_ref() == "nvme0:0" && path == new_path
         ));
 
         Ok(())
@@ -353,7 +342,7 @@ mod tests {
             [Action::Move {
                 from,
                 to: DiskBus::Nvme,
-            }] if from == "scsi0:0"
+            }] if from.as_ref() == "scsi0:0"
         ));
 
         Ok(())

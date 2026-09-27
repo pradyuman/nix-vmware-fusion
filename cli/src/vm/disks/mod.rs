@@ -1,3 +1,4 @@
+use nutype::nutype;
 use std::num::NonZeroU64;
 use std::path::PathBuf;
 
@@ -19,7 +20,20 @@ pub(crate) use stage::stage;
 
 pub(crate) const BYTES_PER_GIB: u64 = 1024_u64.pow(3);
 
-pub(crate) type DiskLabel = String;
+#[nutype(derive(Clone, Debug, Deserialize, AsRef, Display, Eq, PartialEq))]
+pub(crate) struct DiskLabel(String);
+
+impl DiskLabel {
+    pub(crate) fn bus(&self) -> Option<DiskBus> {
+        if self.as_ref().starts_with("nvme") {
+            Some(DiskBus::Nvme)
+        } else if self.as_ref().starts_with("sata") {
+            Some(DiskBus::Sata)
+        } else {
+            None
+        }
+    }
+}
 
 // Inspect
 
@@ -112,4 +126,16 @@ enum CommitAction {
         path: PathBuf,
         format: DiskFormat,
     },
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn disk_label_identifies_bus() {
+        assert_eq!(DiskLabel::new("nvme0:0").bus(), Some(DiskBus::Nvme));
+        assert_eq!(DiskLabel::new("sata0:0").bus(), Some(DiskBus::Sata));
+        assert_eq!(DiskLabel::new("scsi0:0").bus(), None);
+    }
 }
