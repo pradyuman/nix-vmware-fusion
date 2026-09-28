@@ -9,11 +9,11 @@ struct PlanningState {
     unclaimed_attachments: Vec<NetworkAttachment>,
     occupied_labels: HashSet<NetworkAdapterLabel>,
     pending_adapters: Vec<(String, NetworkAdapter)>,
-    configure_actions: Vec<Action>,
+    configurations: Vec<Action>,
 }
 
-pub(crate) fn plan(adapters: &NetworkAdapters, snapshot: Snapshot) -> Result<Plan> {
-    let state = adapters
+pub(crate) fn plan(configured: &NetworkAdapters, snapshot: Snapshot) -> Result<Plan> {
+    let state = configured
         .iter()
         .try_fold(PlanningState::new(snapshot), |state, (name, adapter)| {
             state.match_adapter(name, adapter)
@@ -34,7 +34,7 @@ impl PlanningState {
             unclaimed_attachments,
             occupied_labels,
             pending_adapters: Vec::new(),
-            configure_actions: Vec::new(),
+            configurations: Vec::new(),
         }
     }
 
@@ -51,7 +51,7 @@ impl PlanningState {
         match attached {
             Some(attached) => {
                 if !matches_configuration(&attached, adapter) {
-                    self.configure_actions.push(Action::Configure {
+                    self.configurations.push(Action::Configure {
                         label: attached.label,
                         name: name.to_owned(),
                         adapter: adapter.clone(),
@@ -81,7 +81,7 @@ impl PlanningState {
                     state.unclaimed_attachments.remove(0).label
                 };
 
-                state.configure_actions.push(Action::Configure {
+                state.configurations.push(Action::Configure {
                     label,
                     name,
                     adapter,
@@ -100,7 +100,7 @@ impl PlanningState {
             });
 
         Plan {
-            actions: removals.chain(self.configure_actions).collect(),
+            actions: removals.chain(self.configurations).collect(),
         }
     }
 }
@@ -175,7 +175,7 @@ mod tests {
         let mut adapter = configured_adapter(NetworkMode::Custom);
         adapter.vmnet = Some("vmnet2".to_owned());
 
-        let adapters = NetworkAdapters::from([("primary".to_owned(), adapter)]);
+        let configured = NetworkAdapters::from([("primary".to_owned(), adapter)]);
 
         let mut attachment = network_attachment("ethernet0", "primary", "custom");
         attachment.vmnet = "vmnet2".to_owned();
@@ -184,19 +184,19 @@ mod tests {
             network_attachments: vec![attachment],
         };
 
-        assert!(plan(&adapters, snapshot)?.actions.is_empty());
+        assert!(plan(&configured, snapshot)?.actions.is_empty());
 
         Ok(())
     }
 
     #[test]
     fn changed_network_adapter_mode_is_configured() -> Result<()> {
-        let adapters = configured_adapters("primary", NetworkMode::HostOnly);
+        let configured = configured_adapters("primary", NetworkMode::HostOnly);
         let snapshot = Snapshot {
             network_attachments: vec![network_attachment("ethernet0", "primary", "nat")],
         };
 
-        let plan = plan(&adapters, snapshot)?;
+        let plan = plan(&configured, snapshot)?;
 
         assert!(matches!(
             plan.actions.as_slice(),
@@ -217,7 +217,7 @@ mod tests {
         let mut adapter = configured_adapter(NetworkMode::Custom);
         adapter.vmnet = Some("vmnet3".to_owned());
 
-        let adapters = NetworkAdapters::from([("primary".to_owned(), adapter)]);
+        let configured = NetworkAdapters::from([("primary".to_owned(), adapter)]);
 
         let mut attachment = network_attachment("ethernet0", "primary", "custom");
         attachment.vmnet = "vmnet2".to_owned();
@@ -226,7 +226,7 @@ mod tests {
             network_attachments: vec![attachment],
         };
 
-        let plan = plan(&adapters, snapshot)?;
+        let plan = plan(&configured, snapshot)?;
 
         assert!(matches!(
             plan.actions.as_slice(),
@@ -239,12 +239,12 @@ mod tests {
 
     #[test]
     fn missing_network_adapter_is_configured() -> Result<()> {
-        let adapters = configured_adapters("primary", NetworkMode::Nat);
+        let configured = configured_adapters("primary", NetworkMode::Nat);
         let snapshot = Snapshot {
             network_attachments: Vec::new(),
         };
 
-        let plan = plan(&adapters, snapshot)?;
+        let plan = plan(&configured, snapshot)?;
 
         assert!(matches!(
             plan.actions.as_slice(),
@@ -257,15 +257,15 @@ mod tests {
 
     #[test]
     fn existing_network_adapter_is_adopted() -> Result<()> {
-        let adapters = configured_adapters("primary", NetworkMode::Nat);
-        let mut existing = network_attachment("ethernet0", "", "bridged");
-        existing.external_id.clear();
+        let configured = configured_adapters("primary", NetworkMode::Nat);
+        let mut unmanaged_attachment = network_attachment("ethernet0", "", "bridged");
+        unmanaged_attachment.external_id.clear();
 
         let snapshot = Snapshot {
-            network_attachments: vec![existing],
+            network_attachments: vec![unmanaged_attachment],
         };
 
-        let plan = plan(&adapters, snapshot)?;
+        let plan = plan(&configured, snapshot)?;
 
         assert!(matches!(
             plan.actions.as_slice(),
@@ -278,12 +278,12 @@ mod tests {
 
     #[test]
     fn undeclared_network_adapter_is_removed() -> Result<()> {
-        let adapters = NetworkAdapters::new();
+        let configured = NetworkAdapters::new();
         let snapshot = Snapshot {
             network_attachments: vec![network_attachment("ethernet0", "primary", "nat")],
         };
 
-        let plan = plan(&adapters, snapshot)?;
+        let plan = plan(&configured, snapshot)?;
 
         assert!(matches!(
             plan.actions.as_slice(),
@@ -295,7 +295,7 @@ mod tests {
 
     #[test]
     fn adapter_names_preserve_identity_across_device_order() -> Result<()> {
-        let adapters = NetworkAdapters::from([
+        let configured = NetworkAdapters::from([
             ("primary".to_owned(), configured_adapter(NetworkMode::Nat)),
             (
                 "private".to_owned(),
@@ -309,7 +309,7 @@ mod tests {
             ],
         };
 
-        assert!(plan(&adapters, snapshot)?.actions.is_empty());
+        assert!(plan(&configured, snapshot)?.actions.is_empty());
 
         Ok(())
     }

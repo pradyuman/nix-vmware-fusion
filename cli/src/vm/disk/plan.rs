@@ -6,11 +6,11 @@ use crate::vm::schema::{VirtualDisk, VirtualDisks};
 
 use super::{Action, BYTES_PER_GIB, DiskFormat, DiskImage, Plan, Snapshot};
 
-pub(crate) fn plan(disks: &VirtualDisks, snapshot: Snapshot) -> Result<Plan> {
-    validate_disk_paths(disks, &snapshot.disk_images)?;
+pub(crate) fn plan(configured: &VirtualDisks, snapshot: Snapshot) -> Result<Plan> {
+    validate_disk_paths(configured, &snapshot.disk_images)?;
 
     // Pair each configured disk with the image currently present at its path
-    let disk_matches = disks
+    let disk_matches = configured
         .values()
         .map(|disk| {
             let image = snapshot
@@ -92,15 +92,15 @@ pub(crate) fn plan(disks: &VirtualDisks, snapshot: Snapshot) -> Result<Plan> {
     })
 }
 
-fn validate_disk_paths(disks: &VirtualDisks, images: &[DiskImage]) -> Result<()> {
+fn validate_disk_paths(configured: &VirtualDisks, images: &[DiskImage]) -> Result<()> {
     // Check configured paths directly because missing disk images cannot be canonicalized
-    let configured_paths = disks
+    let configured_paths = configured
         .values()
         .map(|disk| disk.path.as_ref())
         .collect::<HashSet<_>>();
 
     ensure!(
-        configured_paths.len() == disks.len(),
+        configured_paths.len() == configured.len(),
         "configured disk paths must be unique"
     );
 
@@ -197,13 +197,13 @@ mod tests {
     #[test]
     fn disk_on_configured_bus_is_unchanged() -> Result<()> {
         let disk_path = Path::new("/disks/system.vmdk");
-        let disks = configured_disks(disk_path, DiskBus::Nvme);
+        let configured = configured_disks(disk_path, DiskBus::Nvme);
         let snapshot = Snapshot {
             disk_images: vec![disk_image(disk_path)],
             disk_attachments: vec![disk_attachment(disk_path, "nvme0:0")],
         };
 
-        assert!(plan(&disks, snapshot)?.actions.is_empty());
+        assert!(plan(&configured, snapshot)?.actions.is_empty());
 
         Ok(())
     }
@@ -211,13 +211,13 @@ mod tests {
     #[test]
     fn disk_on_another_bus_is_moved() -> Result<()> {
         let disk_path = Path::new("/disks/system.vmdk");
-        let disks = configured_disks(disk_path, DiskBus::Sata);
+        let configured = configured_disks(disk_path, DiskBus::Sata);
         let snapshot = Snapshot {
             disk_images: vec![disk_image(disk_path)],
             disk_attachments: vec![disk_attachment(disk_path, "nvme0:0")],
         };
 
-        let plan = plan(&disks, snapshot)?;
+        let plan = plan(&configured, snapshot)?;
 
         assert!(matches!(
             plan.actions.as_slice(),
@@ -233,13 +233,13 @@ mod tests {
     #[test]
     fn disk_on_unsupported_bus_is_moved_to_configured_bus() -> Result<()> {
         let disk_path = Path::new("/disks/system.vmdk");
-        let disks = configured_disks(disk_path, DiskBus::Nvme);
+        let configured = configured_disks(disk_path, DiskBus::Nvme);
         let snapshot = Snapshot {
             disk_images: vec![disk_image(disk_path)],
             disk_attachments: vec![disk_attachment(disk_path, "scsi0:0")],
         };
 
-        let plan = plan(&disks, snapshot)?;
+        let plan = plan(&configured, snapshot)?;
 
         assert!(matches!(
             plan.actions.as_slice(),
@@ -255,13 +255,13 @@ mod tests {
     #[test]
     fn unattached_configured_disk_is_attached() -> Result<()> {
         let disk_path = Path::new("/disks/system.vmdk");
-        let disks = configured_disks(disk_path, DiskBus::Nvme);
+        let configured = configured_disks(disk_path, DiskBus::Nvme);
         let snapshot = Snapshot {
             disk_images: vec![disk_image(disk_path)],
             disk_attachments: Vec::new(),
         };
 
-        let plan = plan(&disks, snapshot)?;
+        let plan = plan(&configured, snapshot)?;
 
         assert!(matches!(
             plan.actions.as_slice(),
@@ -277,13 +277,13 @@ mod tests {
     #[test]
     fn missing_configured_disk_is_created_and_attached() -> Result<()> {
         let disk_path = Path::new("/disks/system.vmdk");
-        let disks = configured_disks(disk_path, DiskBus::Nvme);
+        let configured = configured_disks(disk_path, DiskBus::Nvme);
         let snapshot = Snapshot {
             disk_images: Vec::new(),
             disk_attachments: Vec::new(),
         };
 
-        let plan = plan(&disks, snapshot)?;
+        let plan = plan(&configured, snapshot)?;
 
         assert!(matches!(
             plan.actions.as_slice(),
@@ -307,13 +307,13 @@ mod tests {
 
     #[test]
     fn unconfigured_attached_disk_is_detached() -> Result<()> {
-        let disks = VirtualDisks::new();
+        let configured = VirtualDisks::new();
         let snapshot = Snapshot {
             disk_images: Vec::new(),
             disk_attachments: vec![disk_attachment(Path::new("/disks/system.vmdk"), "nvme0:0")],
         };
 
-        let plan = plan(&disks, snapshot)?;
+        let plan = plan(&configured, snapshot)?;
 
         assert!(matches!(
             plan.actions.as_slice(),
@@ -326,13 +326,13 @@ mod tests {
     #[test]
     fn detachments_are_planned_before_attachments() -> Result<()> {
         let new_path = Path::new("/disks/new.vmdk");
-        let disks = configured_disks(new_path, DiskBus::Nvme);
+        let configured = configured_disks(new_path, DiskBus::Nvme);
         let snapshot = Snapshot {
             disk_images: vec![disk_image(new_path)],
             disk_attachments: vec![disk_attachment(Path::new("/disks/old.vmdk"), "nvme0:0")],
         };
 
-        let plan = plan(&disks, snapshot)?;
+        let plan = plan(&configured, snapshot)?;
 
         assert!(matches!(
             plan.actions.as_slice(),
@@ -352,7 +352,7 @@ mod tests {
     fn disk_aliases_are_matched_by_canonical_path() -> Result<()> {
         let alias_path = Path::new("/aliases/system.vmdk");
         let canonical_path = Path::new("/disks/system.vmdk");
-        let disks = configured_disks(alias_path, DiskBus::Nvme);
+        let configured = configured_disks(alias_path, DiskBus::Nvme);
         let image = DiskImage {
             canonical_path: canonical_path.to_owned(),
             ..disk_image(alias_path)
@@ -363,7 +363,7 @@ mod tests {
             disk_attachments: vec![disk_attachment(canonical_path, "nvme0:0")],
         };
 
-        assert!(plan(&disks, snapshot)?.actions.is_empty());
+        assert!(plan(&configured, snapshot)?.actions.is_empty());
 
         Ok(())
     }
@@ -372,7 +372,7 @@ mod tests {
     fn duplicate_disk_paths_are_rejected() {
         let alias_path = Path::new("/aliases/system.vmdk");
         let canonical_path = Path::new("/disks/system.vmdk");
-        let disks = VirtualDisks::from([
+        let configured = VirtualDisks::from([
             (
                 "primary".to_owned(),
                 configured_disk(canonical_path, DiskBus::Nvme),
@@ -393,7 +393,7 @@ mod tests {
             disk_attachments: Vec::new(),
         };
 
-        let error = plan(&disks, snapshot).expect_err("duplicate disk paths should fail");
+        let error = plan(&configured, snapshot).expect_err("duplicate disk paths should fail");
 
         assert!(
             error
@@ -405,15 +405,15 @@ mod tests {
     #[test]
     fn smaller_disk_is_expanded_to_configured_capacity() -> Result<()> {
         let disk_path = Path::new("/disks/system.vmdk");
-        let mut disks = configured_disks(disk_path, DiskBus::Nvme);
-        disks.get_mut("primary").expect("configured disk").size =
+        let mut configured = configured_disks(disk_path, DiskBus::Nvme);
+        configured.get_mut("primary").expect("configured disk").size =
             NonZeroU64::new(16).expect("non-zero disk capacity");
         let snapshot = Snapshot {
             disk_images: vec![disk_image_with_capacity(disk_path, 8 * BYTES_PER_GIB)],
             disk_attachments: vec![disk_attachment(disk_path, "nvme0:0")],
         };
 
-        let plan = plan(&disks, snapshot)?;
+        let plan = plan(&configured, snapshot)?;
 
         assert!(matches!(
             plan.actions.as_slice(),
@@ -427,13 +427,13 @@ mod tests {
     #[test]
     fn disk_at_configured_capacity_is_unchanged() -> Result<()> {
         let disk_path = Path::new("/disks/system.vmdk");
-        let disks = configured_disks(disk_path, DiskBus::Nvme);
+        let configured = configured_disks(disk_path, DiskBus::Nvme);
         let snapshot = Snapshot {
             disk_images: vec![disk_image_with_capacity(disk_path, 8 * BYTES_PER_GIB)],
             disk_attachments: vec![disk_attachment(disk_path, "nvme0:0")],
         };
 
-        let plan = plan(&disks, snapshot)?;
+        let plan = plan(&configured, snapshot)?;
 
         assert!(plan.actions.is_empty());
 
@@ -443,15 +443,18 @@ mod tests {
     #[test]
     fn disk_in_another_format_is_converted() -> Result<()> {
         let disk_path = Path::new("/disks/system.vmdk");
-        let mut disks = configured_disks(disk_path, DiskBus::Nvme);
-        disks.get_mut("primary").expect("configured disk").split = true;
+        let mut configured = configured_disks(disk_path, DiskBus::Nvme);
+        configured
+            .get_mut("primary")
+            .expect("configured disk")
+            .split = true;
 
         let snapshot = Snapshot {
             disk_images: vec![disk_image(disk_path)],
             disk_attachments: vec![disk_attachment(disk_path, "nvme0:0")],
         };
 
-        let plan = plan(&disks, snapshot)?;
+        let plan = plan(&configured, snapshot)?;
 
         assert!(matches!(
             plan.actions.as_slice(),
@@ -465,13 +468,13 @@ mod tests {
     #[test]
     fn shrinking_disk_is_rejected() {
         let disk_path = Path::new("/disks/system.vmdk");
-        let disks = configured_disks(disk_path, DiskBus::Nvme);
+        let configured = configured_disks(disk_path, DiskBus::Nvme);
         let snapshot = Snapshot {
             disk_images: vec![disk_image_with_capacity(disk_path, 16 * BYTES_PER_GIB)],
             disk_attachments: vec![disk_attachment(disk_path, "nvme0:0")],
         };
 
-        let error = plan(&disks, snapshot).expect_err("shrinking disk should fail");
+        let error = plan(&configured, snapshot).expect_err("shrinking disk should fail");
 
         assert!(error.to_string().contains(&format!(
             "cannot resize disk {} below its current capacity",

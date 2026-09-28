@@ -4,7 +4,7 @@ use crate::vm::schema::{OpticalDrive, OpticalDriveSource, OpticalDrives};
 
 use super::{Action, OpticalAttachment, Plan, Snapshot};
 
-pub(crate) fn plan(drives: &OpticalDrives, snapshot: Snapshot) -> Plan {
+pub(crate) fn plan(configured: &OpticalDrives, snapshot: Snapshot) -> Plan {
     let Snapshot {
         mut state,
         optical_attachments,
@@ -18,7 +18,7 @@ pub(crate) fn plan(drives: &OpticalDrives, snapshot: Snapshot) -> Plan {
     let (retained_bindings, removed_bindings) = state
         .optical_drives
         .into_iter()
-        .partition(|(name, _)| drives.contains_key(name));
+        .partition(|(name, _)| configured.contains_key(name));
     state.optical_drives = retained_bindings;
 
     // Remove only drives previously claimed in our state file.
@@ -29,7 +29,7 @@ pub(crate) fn plan(drives: &OpticalDrives, snapshot: Snapshot) -> Plan {
             label: binding.label,
         });
 
-    let configurations = drives.iter().filter_map(|(name, drive)| {
+    let configurations = configured.iter().filter_map(|(name, drive)| {
         let label = state
             .optical_drives
             .get(name)
@@ -115,10 +115,10 @@ mod tests {
     #[test]
     fn matching_managed_drive_is_unchanged() {
         let path = "/images/installer.iso";
-        let drives = OpticalDrives::from([("installer".to_owned(), image_drive(path))]);
+        let configured = OpticalDrives::from([("installer".to_owned(), image_drive(path))]);
         let snapshot = managed_snapshot("installer", image_attachment("sata0:0", path));
 
-        let plan = plan(&drives, snapshot);
+        let plan = plan(&configured, snapshot);
 
         assert!(plan.actions.is_empty());
         assert_eq!(
@@ -146,12 +146,12 @@ mod tests {
 
     #[test]
     fn changed_managed_drive_is_configured() {
-        let drives =
+        let configured =
             OpticalDrives::from([("installer".to_owned(), image_drive("/images/new.iso"))]);
         let snapshot =
             managed_snapshot("installer", image_attachment("sata0:0", "/images/old.iso"));
 
-        let plan = plan(&drives, snapshot);
+        let plan = plan(&configured, snapshot);
 
         assert!(matches!(
             plan.actions.as_slice(),
@@ -171,14 +171,14 @@ mod tests {
 
     #[test]
     fn new_drive_is_configured_without_a_label() {
-        let drives =
+        let configured =
             OpticalDrives::from([("installer".to_owned(), image_drive("/images/installer.iso"))]);
         let snapshot = Snapshot {
             state: State::default(),
             optical_attachments: Vec::new(),
         };
 
-        let plan = plan(&drives, snapshot);
+        let plan = plan(&configured, snapshot);
 
         assert!(matches!(
             plan.actions.as_slice(),
@@ -188,14 +188,14 @@ mod tests {
 
     #[test]
     fn missing_managed_attachment_is_configured_at_its_known_label() {
-        let drives =
+        let configured =
             OpticalDrives::from([("installer".to_owned(), image_drive("/images/installer.iso"))]);
         let snapshot = Snapshot {
             state: managed_state("installer", "sata0:0"),
             optical_attachments: Vec::new(),
         };
 
-        let plan = plan(&drives, snapshot);
+        let plan = plan(&configured, snapshot);
 
         assert!(matches!(
             plan.actions.as_slice(),
