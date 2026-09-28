@@ -18,6 +18,9 @@ pub(crate) fn plan(schema: &VirtualMachine, snapshot: Snapshot) -> Plan {
         // Fusion on Apple silicon requires UEFI; BIOS is unsupported
         // https://knowledge.broadcom.com/external/article/315602
         entries.push(("firmware", "efi".to_owned()));
+
+        // Enable keyboard and mouse input through the virtual XHCI controller
+        entries.push(("usb_xhci.present", "TRUE".to_owned()));
     }
 
     Plan {

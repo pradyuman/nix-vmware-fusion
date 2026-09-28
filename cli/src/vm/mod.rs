@@ -240,6 +240,7 @@ mod tests {
         assert_vmx_entry(&vmx_path, "memsize", "4096")?;
         assert_vmx_entry(&vmx_path, "uefi.secureBoot.enabled", "TRUE")?;
         assert_vmx_entry(&vmx_path, "firmware", "efi")?;
+        assert_vmx_entry(&vmx_path, "usb_xhci.present", "TRUE")?;
 
         let snapshot = inspect_ir(&ir)?;
         let network_attachments = &snapshot.network.network_attachments;
