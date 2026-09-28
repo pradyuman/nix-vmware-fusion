@@ -148,6 +148,9 @@ programs.vmware-fusion = {
     vcpus = 2;
     memory = 8192;
     secureBoot = false;
+    networkAdapters.primary = {
+      mode = "nat";
+    };
     disks.primary = {
       size = 64;
       bus = "nvme";
@@ -169,6 +172,34 @@ from your configuration, the module stops managing it (but doesn't delete it).
 > `nix-vmware-fusion` will return an error if it tries to change the
 > configuration of a running virtual machine. Make sure to shut down any
 > virtual machines you're changing before activating a new configuration.
+
+### Network adapters
+
+Declare every virtual network adapter that should be attached to the VM:
+
+```nix
+programs.vmware-fusion.virtualMachines.asuna = {
+  # ...
+  networkAdapters = {
+    primary = {
+      mode = "nat";
+      model = "vmxnet3";
+      startConnected = true;
+    };
+  };
+};
+```
+
+Each adapter supports the following settings:
+
+| Setting          | Type                                               | Default     | Description                                                                                |
+| ---------------- | -------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------ |
+| `mode`           | `"nat"`, `"bridged"`, `"host-only"`, or `"custom"` | `"nat"`     | How the adapter connects to the host network                                               |
+| `vmnet`          | String                                             | —           | VMware network to use with `"custom"` mode (required)                                      |
+| `model`          | `"vmxnet3"`, `"e1000e"`, or `"e1000"`              | `"vmxnet3"` | Virtual network adapter model. Use E1000E or E1000 when the guest does not support VMXNET3 |
+| `startConnected` | Boolean                                            | `true`      | Whether to connect the adapter when the virtual machine starts                             |
+
+Removing an adapter declaration will remove it from the VM.
 
 ### Virtual disks
 

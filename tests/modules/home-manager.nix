@@ -75,6 +75,7 @@ let
       vcpus = 4;
       memory = 8192;
       secureBoot = true;
+      networkAdapters.primary = { };
       disks.primary.size = 64;
     };
   };
@@ -154,6 +155,12 @@ in
       vcpus = 4;
       memory = 8192;
       secureBoot = true;
+      networkAdapters.primary = {
+        mode = "nat";
+        vmnet = null;
+        model = "vmxnet3";
+        startConnected = true;
+      };
       disks.primary = {
         path = "/Users/test/Virtual Machines.localized/asuna.vmwarevm/primary.vmdk";
         size = 64;

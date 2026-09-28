@@ -5,6 +5,7 @@ use std::path::Path;
 use crate::config::CONFIG;
 
 mod disks;
+mod network;
 mod schema;
 mod vmx;
 
@@ -15,28 +16,40 @@ mod test_support;
 
 pub(crate) struct Snapshot {
     vmx: vmx::Snapshot,
+    network: network::Snapshot,
     disks: disks::Snapshot,
 }
 
 fn inspect(schema: &schema::VirtualMachine) -> Result<Snapshot> {
     let vmx = vmx::inspect(schema.path.as_ref())?;
+    let network = network::inspect(&vmx.target_path)?;
     let disks = disks::inspect(&vmx.target_path, &schema.disks)?;
 
-    Ok(Snapshot { vmx, disks })
+    Ok(Snapshot {
+        vmx,
+        network,
+        disks,
+    })
 }
 
 // Plan
 
 pub(crate) struct Plan {
     vmx: vmx::Plan,
+    network: network::Plan,
     disks: disks::Plan,
 }
 
 fn plan(schema: &schema::VirtualMachine, snapshot: Snapshot) -> Result<Plan> {
-    let disks = disks::plan(&schema.disks, snapshot.disks)?;
     let vmx = vmx::plan(schema, snapshot.vmx);
+    let network = network::plan(&schema.network_adapters, snapshot.network)?;
+    let disks = disks::plan(&schema.disks, snapshot.disks)?;
 
-    Ok(Plan { vmx, disks })
+    Ok(Plan {
+        vmx,
+        network,
+        disks,
+    })
 }
 
 // Stage
@@ -47,7 +60,11 @@ pub(crate) struct StagedChange {
 }
 
 fn stage(plan: Plan) -> Result<StagedChange> {
-    let Plan { vmx, disks } = plan;
+    let Plan {
+        vmx,
+        network,
+        disks,
+    } = plan;
     let temp_dir = tempfile::tempdir()?;
     let filename = vmx
         .snapshot
@@ -57,6 +74,7 @@ fn stage(plan: Plan) -> Result<StagedChange> {
     let draft_path = temp_dir.path().join(filename);
 
     vmx::stage(&draft_path, &vmx)?;
+    network::stage(&draft_path, network)?;
     let disks = disks::stage(&draft_path, disks)?;
 
     // Carry only the completed VMX forward and discard temporary baseline files
@@ -145,6 +163,9 @@ mod tests {
             "vcpus": 4,
             "memory": 4096,
             "secureBoot": true,
+            "networkAdapters": {
+                "primary": {}
+            },
             "disks": {
                 "primary": {
                     "path": disk_path,
@@ -193,7 +214,16 @@ mod tests {
 
         let schema = serde_json::from_value::<VirtualMachine>(ir)?;
         let snapshot = inspect(&schema)?;
+        let network_attachments = &snapshot.network.network_attachments;
         let attached = &snapshot.disks.disk_attachments;
+
+        assert_eq!(network_attachments.len(), 1);
+        assert_eq!(network_attachments[0].label, "ethernet0");
+        assert_eq!(
+            network_attachments[0].external_id,
+            "nix-vmware-fusion:primary"
+        );
+        assert_eq!(network_attachments[0].mode, "nat");
 
         assert_eq!(
             snapshot.disks.disk_images[0].state.capacity_bytes.get(),

@@ -15,7 +15,48 @@ pub(crate) struct VirtualMachine {
     pub memory: NonZeroU64,
     pub secure_boot: bool,
     #[serde(default)]
+    pub network_adapters: NetworkAdapters,
+    #[serde(default)]
     pub disks: VirtualDisks,
+}
+
+// Network adapters
+
+pub(crate) type NetworkAdapters = BTreeMap<String, NetworkAdapter>;
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct NetworkAdapter {
+    #[serde(default)]
+    pub mode: NetworkMode,
+    pub vmnet: Option<String>,
+    #[serde(default)]
+    pub model: NetworkAdapterModel,
+    #[serde(default = "default_true")]
+    pub start_connected: bool,
+}
+
+#[derive(Debug, Default, Deserialize, Clone, Copy, PartialEq)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) enum NetworkMode {
+    #[default]
+    Nat,
+    Bridged,
+    HostOnly,
+    Custom,
+}
+
+#[derive(Debug, Default, Deserialize, Clone, Copy, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub(crate) enum NetworkAdapterModel {
+    #[default]
+    Vmxnet3,
+    E1000e,
+    E1000,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 // Virtual disks
