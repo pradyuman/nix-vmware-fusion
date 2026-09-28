@@ -4,7 +4,7 @@ use std::path::Path;
 
 use crate::config::CONFIG;
 
-mod disks;
+mod disk;
 mod network;
 mod schema;
 mod vmx;
@@ -17,13 +17,13 @@ mod test_support;
 pub(crate) struct Snapshot {
     vmx: vmx::Snapshot,
     network: network::Snapshot,
-    disks: disks::Snapshot,
+    disks: disk::Snapshot,
 }
 
 fn inspect(schema: &schema::VirtualMachine) -> Result<Snapshot> {
     let vmx = vmx::inspect(schema.path.as_ref())?;
     let network = network::inspect(&vmx.target_path)?;
-    let disks = disks::inspect(&vmx.target_path, &schema.disks)?;
+    let disks = disk::inspect(&vmx.target_path, &schema.disks)?;
 
     Ok(Snapshot {
         vmx,
@@ -37,13 +37,13 @@ fn inspect(schema: &schema::VirtualMachine) -> Result<Snapshot> {
 pub(crate) struct Plan {
     vmx: vmx::Plan,
     network: network::Plan,
-    disks: disks::Plan,
+    disks: disk::Plan,
 }
 
 fn plan(schema: &schema::VirtualMachine, snapshot: Snapshot) -> Result<Plan> {
     let vmx = vmx::plan(schema, snapshot.vmx);
     let network = network::plan(&schema.network_adapters, snapshot.network)?;
-    let disks = disks::plan(&schema.disks, snapshot.disks)?;
+    let disks = disk::plan(&schema.disks, snapshot.disks)?;
 
     Ok(Plan {
         vmx,
@@ -56,7 +56,7 @@ fn plan(schema: &schema::VirtualMachine, snapshot: Snapshot) -> Result<Plan> {
 
 pub(crate) struct StagedChange {
     vmx: vmx::StagedChange,
-    disks: disks::StagedChange,
+    disks: disk::StagedChange,
 }
 
 fn stage(plan: Plan) -> Result<StagedChange> {
@@ -75,7 +75,7 @@ fn stage(plan: Plan) -> Result<StagedChange> {
 
     vmx::stage(&draft_path, &vmx)?;
     network::stage(&draft_path, network)?;
-    let disks = disks::stage(&draft_path, disks)?;
+    let disks = disk::stage(&draft_path, disks)?;
 
     // Carry only the completed VMX forward and discard temporary baseline files
     let updated_contents = fs::read_to_string(&draft_path)?;
@@ -150,7 +150,7 @@ pub(crate) fn apply(file: &Path) -> Result<()> {
 mod tests {
     use std::path::Path;
 
-    use super::disks::BYTES_PER_GIB;
+    use super::disk::BYTES_PER_GIB;
     use super::schema::VirtualMachine;
     use super::test_support::{GUEST_OS, assert_vmx_entry, create_vmdk, create_vmx};
     use super::*;

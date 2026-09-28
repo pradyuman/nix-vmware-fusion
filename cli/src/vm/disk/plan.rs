@@ -148,7 +148,7 @@ mod tests {
     use std::num::NonZeroU64;
     use std::path::Path;
 
-    use crate::vm::disks::{DiskAttachment, DiskImage, DiskLabel, DiskState};
+    use crate::vm::disk::{DiskAttachment, DiskImage, DiskLabel, DiskState};
     use crate::vm::schema::{DiskBus, DiskPath, VirtualDisk};
 
     use super::*;

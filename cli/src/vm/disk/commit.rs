@@ -173,8 +173,8 @@ fn move_disk(from: &Path, to: &Path) -> Result<()> {
 
 #[cfg(all(test, feature = "vmware-tests"))]
 mod tests {
-    use crate::vm::disks::BYTES_PER_GIB;
-    use crate::vm::disks::inspect::read_state;
+    use crate::vm::disk::BYTES_PER_GIB;
+    use crate::vm::disk::inspect::read_state;
     use crate::vm::test_support::create_vmdk;
 
     use super::*;

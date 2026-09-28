@@ -126,7 +126,7 @@ fn find_first_free(draft_path: &Path, bus: DiskBus) -> Result<DiskLabel> {
 mod tests {
     use std::num::NonZeroU64;
 
-    use crate::vm::disks::DiskFormat;
+    use crate::vm::disk::DiskFormat;
 
     use super::*;
 
@@ -182,7 +182,7 @@ mod tests {
     mod vmware {
         use std::fs;
 
-        use crate::vm::disks::inspect;
+        use crate::vm::disk::inspect;
         use crate::vm::schema::VirtualDisks;
         use crate::vm::test_support::{create_vmdk, create_vmx};
 
