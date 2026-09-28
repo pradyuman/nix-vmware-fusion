@@ -6,7 +6,9 @@ use crate::config::CONFIG;
 
 mod disk;
 mod network;
+mod optical;
 mod schema;
+mod state;
 mod vmx;
 
 #[cfg(all(test, feature = "vmware-tests"))]
@@ -17,18 +19,21 @@ mod test_support;
 pub(crate) struct Snapshot {
     vmx: vmx::Snapshot,
     network: network::Snapshot,
-    disks: disk::Snapshot,
+    disk: disk::Snapshot,
+    optical: optical::Snapshot,
 }
 
 fn inspect(schema: &schema::VirtualMachine) -> Result<Snapshot> {
     let vmx = vmx::inspect(schema.path.as_ref())?;
     let network = network::inspect(&vmx.target_path)?;
-    let disks = disk::inspect(&vmx.target_path, &schema.disks)?;
+    let disk = disk::inspect(&vmx.target_path, &schema.disks)?;
+    let optical = optical::inspect(&vmx.target_path)?;
 
     Ok(Snapshot {
         vmx,
         network,
-        disks,
+        disk,
+        optical,
     })
 }
 
@@ -37,18 +42,21 @@ fn inspect(schema: &schema::VirtualMachine) -> Result<Snapshot> {
 pub(crate) struct Plan {
     vmx: vmx::Plan,
     network: network::Plan,
-    disks: disk::Plan,
+    disk: disk::Plan,
+    optical: optical::Plan,
 }
 
 fn plan(schema: &schema::VirtualMachine, snapshot: Snapshot) -> Result<Plan> {
     let vmx = vmx::plan(schema, snapshot.vmx);
     let network = network::plan(&schema.network_adapters, snapshot.network)?;
-    let disks = disk::plan(&schema.disks, snapshot.disks)?;
+    let disk = disk::plan(&schema.disks, snapshot.disk)?;
+    let optical = optical::plan(&schema.optical_drives, snapshot.optical);
 
     Ok(Plan {
         vmx,
         network,
-        disks,
+        disk,
+        optical,
     })
 }
 
@@ -56,14 +64,16 @@ fn plan(schema: &schema::VirtualMachine, snapshot: Snapshot) -> Result<Plan> {
 
 pub(crate) struct StagedChange {
     vmx: vmx::StagedChange,
-    disks: disk::StagedChange,
+    disk: disk::StagedChange,
+    optical: optical::StagedChange,
 }
 
 fn stage(plan: Plan) -> Result<StagedChange> {
     let Plan {
         vmx,
         network,
-        disks,
+        disk,
+        optical,
     } = plan;
     let temp_dir = tempfile::tempdir()?;
     let filename = vmx
@@ -75,7 +85,8 @@ fn stage(plan: Plan) -> Result<StagedChange> {
 
     vmx::stage(&draft_path, &vmx)?;
     network::stage(&draft_path, network)?;
-    let disks = disk::stage(&draft_path, disks)?;
+    let disk = disk::stage(&draft_path, disk)?;
+    let optical = optical::stage(&draft_path, optical)?;
 
     // Carry only the completed VMX forward and discard temporary baseline files
     let updated_contents = fs::read_to_string(&draft_path)?;
@@ -85,7 +96,8 @@ fn stage(plan: Plan) -> Result<StagedChange> {
             snapshot: vmx.snapshot,
             updated_contents,
         },
-        disks,
+        disk,
+        optical,
     })
 }
 
@@ -93,17 +105,28 @@ fn stage(plan: Plan) -> Result<StagedChange> {
 
 fn commit(staged: StagedChange) -> Result<()> {
     let vmx_changed = !staged.vmx.is_noop();
-    let disks_changed = !staged.disks.is_noop();
+    let disk_changed = !staged.disk.is_noop();
 
-    if vmx_changed || disks_changed {
+    let bundle_path = staged
+        .vmx
+        .snapshot
+        .target_path
+        .parent()
+        .context("missing VMX directory")?
+        .to_owned();
+
+    if vmx_changed || disk_changed {
         ensure_stopped(&staged.vmx.snapshot.target_path)?;
     }
-    if disks_changed {
-        staged.disks.commit()?;
+    if disk_changed {
+        staged.disk.commit()?;
     }
     if vmx_changed {
         staged.vmx.commit()?;
     }
+
+    // State can change without the VMX.
+    staged.optical.commit(&bundle_path)?;
 
     Ok(())
 }
@@ -182,6 +205,12 @@ mod tests {
         Ok(())
     }
 
+    fn inspect_ir(ir: &serde_json::Value) -> Result<Snapshot> {
+        let schema = serde_json::from_value::<VirtualMachine>(ir.clone())?;
+
+        inspect(&schema)
+    }
+
     #[test]
     fn vmcli_reports_new_vmx_as_stopped() -> Result<()> {
         let (_temp_dir, vmx_path) = create_vmx()?;
@@ -212,10 +241,9 @@ mod tests {
         assert_vmx_entry(&vmx_path, "uefi.secureBoot.enabled", "TRUE")?;
         assert_vmx_entry(&vmx_path, "firmware", "efi")?;
 
-        let schema = serde_json::from_value::<VirtualMachine>(ir)?;
-        let snapshot = inspect(&schema)?;
+        let snapshot = inspect_ir(&ir)?;
         let network_attachments = &snapshot.network.network_attachments;
-        let attached = &snapshot.disks.disk_attachments;
+        let disk_attachments = &snapshot.disk.disk_attachments;
 
         assert_eq!(network_attachments.len(), 1);
         assert_eq!(network_attachments[0].label, "ethernet0");
@@ -226,13 +254,13 @@ mod tests {
         assert_eq!(network_attachments[0].mode, "nat");
 
         assert_eq!(
-            snapshot.disks.disk_images[0].state.capacity_bytes.get(),
+            snapshot.disk.disk_images[0].state.capacity_bytes.get(),
             BYTES_PER_GIB
         );
-        assert_eq!(attached.len(), 1);
-        assert!(attached[0].label.as_ref().starts_with("nvme"));
+        assert_eq!(disk_attachments.len(), 1);
+        assert!(disk_attachments[0].label.as_ref().starts_with("nvme"));
         assert_eq!(
-            attached[0].canonical_path,
+            disk_attachments[0].canonical_path,
             Some(fs::canonicalize(&disk_path)?)
         );
 
@@ -285,15 +313,100 @@ mod tests {
             if secure_boot { "TRUE" } else { "FALSE" },
         )?;
 
-        let schema = serde_json::from_value::<VirtualMachine>(ir)?;
-        let attached = inspect(&schema)?.disks.disk_attachments;
+        let snapshot = inspect_ir(&ir)?;
+        let disk_attachments = &snapshot.disk.disk_attachments;
 
-        assert_eq!(attached.len(), 1);
-        assert!(attached[0].label.as_ref().starts_with(bus));
+        assert_eq!(disk_attachments.len(), 1);
+        assert!(disk_attachments[0].label.as_ref().starts_with(bus));
         assert_eq!(
-            attached[0].canonical_path,
+            disk_attachments[0].canonical_path,
             Some(fs::canonicalize(&disk_path)?)
         );
+
+        Ok(())
+    }
+
+    #[test]
+    fn manages_optical_drive_lifecycle() -> Result<()> {
+        let temp_dir = tempfile::tempdir()?;
+        let bundle_path = temp_dir.path().join("test.vmwarevm");
+        let image_path = temp_dir.path().join("installer.iso");
+        let updated_image_path = temp_dir.path().join("updated-installer.iso");
+        let ir_path = temp_dir.path().join("virtual-machine-ir.json");
+
+        fs::write(&image_path, [])?;
+        fs::write(&updated_image_path, [])?;
+
+        let mut ir = serde_json::json!({
+            "displayName": "Test VM",
+            "path": bundle_path,
+            "guestOS": GUEST_OS,
+            "vcpus": 2,
+            "memory": 4096,
+            "secureBoot": false,
+            "opticalDrives": {
+                "installer": {
+                    "source": {
+                        "type": "image",
+                        "path": image_path
+                    }
+                }
+            }
+        });
+
+        // Create the optical drive
+        write_ir_file(&ir_path, &ir)?;
+        apply(&ir_path)?;
+
+        let snapshot = inspect_ir(&ir)?;
+        let [attachment] = snapshot.optical.optical_attachments.as_slice() else {
+            panic!("expected one optical attachment");
+        };
+        let label = attachment.label.clone();
+
+        assert_eq!(
+            attachment.backing_path.as_deref(),
+            Some(image_path.as_path())
+        );
+        assert!(attachment.start_connected);
+        assert_eq!(
+            snapshot
+                .optical
+                .state
+                .optical_drives
+                .get("installer")
+                .expect("managed installer drive")
+                .label,
+            label
+        );
+
+        // Replace the image while retaining the assigned VMware label
+        ir["opticalDrives"]["installer"]["source"]["path"] = serde_json::json!(updated_image_path);
+        ir["opticalDrives"]["installer"]["startConnected"] = serde_json::json!(false);
+        write_ir_file(&ir_path, &ir)?;
+        apply(&ir_path)?;
+
+        let snapshot = inspect_ir(&ir)?;
+        let [attachment] = snapshot.optical.optical_attachments.as_slice() else {
+            panic!("expected one optical attachment");
+        };
+
+        assert_eq!(attachment.label, label);
+        assert_eq!(
+            attachment.backing_path.as_deref(),
+            Some(updated_image_path.as_path())
+        );
+        assert!(!attachment.start_connected);
+
+        // Remove the managed optical drive
+        ir["opticalDrives"] = serde_json::json!({});
+        write_ir_file(&ir_path, &ir)?;
+        apply(&ir_path)?;
+
+        let snapshot = inspect_ir(&ir)?;
+
+        assert!(snapshot.optical.optical_attachments.is_empty());
+        assert!(snapshot.optical.state.optical_drives.is_empty());
 
         Ok(())
     }

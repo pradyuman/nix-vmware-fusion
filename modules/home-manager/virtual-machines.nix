@@ -47,6 +47,34 @@ let
     };
   }) (adapter: (adapter.mode == "custom") == (adapter.vmnet != null));
 
+  opticalDriveType = lib.types.submodule {
+    options = {
+      source = lib.mkOption {
+        type = lib.types.submodule {
+          options = {
+            type = lib.mkOption {
+              type = lib.types.enum [ "image" ];
+              description = "Optical drive backing type.";
+            };
+
+            path = lib.mkOption {
+              type = lib.types.str;
+              example = "/path/to/installer.iso";
+              description = "Absolute path to the ISO image.";
+            };
+          };
+        };
+        description = "Media inserted into the optical drive.";
+      };
+
+      startConnected = lib.mkOption {
+        type = lib.types.bool;
+        default = true;
+        description = "Whether to connect the drive when the virtual machine starts.";
+      };
+    };
+  };
+
   virtualMachineModule =
     { name, config, ... }:
     {
@@ -130,6 +158,12 @@ let
               }
             )
           );
+        };
+
+        opticalDrives = lib.mkOption {
+          type = lib.types.attrsOf opticalDriveType;
+          default = { };
+          description = "Virtual optical drives attached to the VM. Removing a declaration detaches the drive without deleting its image.";
         };
       };
     };

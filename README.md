@@ -244,6 +244,35 @@ files.
 > When adding an existing VM to your configuration, make sure to declare any
 > existing disks unless you want them detached.
 
+### Optical drives
+
+Attach an ISO image to the VM with a virtual optical drive:
+
+```nix
+programs.vmware-fusion.virtualMachines.asuna = {
+  # ...
+  opticalDrives.installer = {
+    source = {
+      type = "image";
+      path = "/path/to/installer.iso";
+    };
+    startConnected = true;
+  };
+};
+```
+
+Each optical drive supports the following settings:
+
+| Setting          | Type      | Default | Description                                     |
+| ---------------- | --------- | ------- | ----------------------------------------------- |
+| `source.type`    | `"image"` | —       | Optical drive backing type (required)           |
+| `source.path`    | String    | —       | Absolute path to the ISO image (required)       |
+| `startConnected` | Boolean   | `true`  | Whether to connect the drive when the VM starts |
+
+Managed optical drives can be updated by changing `source` or detached by
+removing their declaration. Optical drives not managed by the module are left
+untouched.
+
 ## Remove VMware Fusion
 
 ### Uninstall

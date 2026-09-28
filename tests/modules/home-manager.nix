@@ -77,6 +77,10 @@ let
       secureBoot = true;
       networkAdapters.primary = { };
       disks.primary.size = 64;
+      opticalDrives.installer.source = {
+        type = "image";
+        path = "/Users/test/Downloads/nixos.iso";
+      };
     };
   };
 
@@ -167,6 +171,13 @@ in
         bus = "nvme";
         preallocate = false;
         split = false;
+      };
+      opticalDrives.installer = {
+        source = {
+          type = "image";
+          path = "/Users/test/Downloads/nixos.iso";
+        };
+        startConnected = true;
       };
     };
   };

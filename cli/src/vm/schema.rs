@@ -18,6 +18,8 @@ pub(crate) struct VirtualMachine {
     pub network_adapters: NetworkAdapters,
     #[serde(default)]
     pub disks: VirtualDisks,
+    #[serde(default)]
+    pub optical_drives: OpticalDrives,
 }
 
 // Network adapters
@@ -83,24 +85,44 @@ pub(crate) enum DiskBus {
     Sata,
 }
 
+// Optical drives
+
+pub(crate) type OpticalDrives = BTreeMap<String, OpticalDrive>;
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct OpticalDrive {
+    pub source: OpticalDriveSource,
+    #[serde(default = "default_true")]
+    pub start_connected: bool,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(tag = "type", rename_all = "lowercase")]
+pub(crate) enum OpticalDriveSource {
+    Image { path: OpticalImagePath },
+}
+
 // Paths
 
 #[nutype(
-    validate(predicate = valid_bundle_path),
+    validate(predicate = |path| valid_path(path, "vmwarevm")),
     derive(Debug, Deserialize, AsRef),
 )]
 pub(crate) struct BundlePath(PathBuf);
 
-fn valid_bundle_path(path: &Path) -> bool {
-    path.is_absolute() && path.extension().is_some_and(|ext| ext == "vmwarevm")
-}
-
 #[nutype(
-    validate(predicate = valid_disk_path),
+    validate(predicate = |path| valid_path(path, "vmdk")),
     derive(Debug, Deserialize, AsRef),
 )]
 pub(crate) struct DiskPath(PathBuf);
 
-fn valid_disk_path(path: &Path) -> bool {
-    path.is_absolute() && path.extension().is_some_and(|ext| ext == "vmdk")
+#[nutype(
+    validate(predicate = |path| valid_path(path, "iso")),
+    derive(Clone, Debug, Deserialize, AsRef),
+)]
+pub(crate) struct OpticalImagePath(PathBuf);
+
+fn valid_path(path: &Path, extension: &str) -> bool {
+    path.is_absolute() && path.extension().is_some_and(|actual| actual == extension)
 }
