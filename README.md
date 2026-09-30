@@ -155,6 +155,7 @@ programs.vmware-fusion = {
       size = 64;
       bus = "nvme";
     };
+    sharedFolders.projects.hostPath = "/Users/asuna/projects";
   };
 };
 ```
@@ -243,6 +244,30 @@ files.
 > [!NOTE]
 > When adding an existing VM to your configuration, make sure to declare any
 > existing disks unless you want them detached.
+
+### Shared folders
+
+Share a directory on the host with the VM:
+
+```nix
+programs.vmware-fusion.virtualMachines.asuna = {
+  # ...
+  sharedFolders.projects = {
+    hostPath = "/Users/asuna/projects";
+    readOnly = false;
+  };
+};
+```
+
+Each shared folder supports the following settings:
+
+| Setting    | Type    | Default | Description                                         |
+| ---------- | ------- | ------- | --------------------------------------------------- |
+| `hostPath` | String  | —       | Absolute path to the host directory (required)      |
+| `readOnly` | Boolean | `false` | Whether the shared folder is read-only in the guest |
+
+The attribute name (`projects` above) becomes the shared folder name reported
+to the guest.
 
 ### Optical drives
 

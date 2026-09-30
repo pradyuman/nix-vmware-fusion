@@ -8,6 +8,7 @@ mod disk;
 mod network;
 mod optical;
 mod schema;
+mod shared_folder;
 mod state;
 mod vmx;
 
@@ -20,6 +21,7 @@ pub(crate) struct Snapshot {
     vmx: vmx::Snapshot,
     network: network::Snapshot,
     disk: disk::Snapshot,
+    shared_folder: shared_folder::Snapshot,
     optical: optical::Snapshot,
 }
 
@@ -27,12 +29,14 @@ fn inspect(schema: &schema::VirtualMachine) -> Result<Snapshot> {
     let vmx = vmx::inspect(schema.path.as_ref())?;
     let network = network::inspect(&vmx.target_path)?;
     let disk = disk::inspect(&vmx.target_path, &schema.disks)?;
+    let shared_folder = shared_folder::inspect(&vmx.target_path)?;
     let optical = optical::inspect(&vmx.target_path)?;
 
     Ok(Snapshot {
         vmx,
         network,
         disk,
+        shared_folder,
         optical,
     })
 }
@@ -43,6 +47,7 @@ pub(crate) struct Plan {
     vmx: vmx::Plan,
     network: network::Plan,
     disk: disk::Plan,
+    shared_folder: shared_folder::Plan,
     optical: optical::Plan,
 }
 
@@ -50,12 +55,14 @@ fn plan(schema: &schema::VirtualMachine, snapshot: Snapshot) -> Result<Plan> {
     let vmx = vmx::plan(schema, snapshot.vmx);
     let network = network::plan(&schema.network_adapters, snapshot.network)?;
     let disk = disk::plan(&schema.disks, snapshot.disk)?;
+    let shared_folder = shared_folder::plan(&schema.shared_folders, snapshot.shared_folder)?;
     let optical = optical::plan(&schema.optical_drives, snapshot.optical);
 
     Ok(Plan {
         vmx,
         network,
         disk,
+        shared_folder,
         optical,
     })
 }
@@ -73,6 +80,7 @@ fn stage(plan: Plan) -> Result<StagedChange> {
         vmx,
         network,
         disk,
+        shared_folder,
         optical,
     } = plan;
     let temp_dir = tempfile::tempdir()?;
@@ -85,6 +93,8 @@ fn stage(plan: Plan) -> Result<StagedChange> {
 
     vmx::stage(&draft_path, &vmx)?;
     network::stage(&draft_path, network)?;
+    shared_folder::stage(&draft_path, shared_folder)?;
+
     let disk = disk::stage(&draft_path, disk)?;
     let optical = optical::stage(&draft_path, optical)?;
 

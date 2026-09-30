@@ -47,6 +47,63 @@ let
     };
   }) (adapter: (adapter.mode == "custom") == (adapter.vmnet != null));
 
+  virtualDiskType =
+    bundlePath:
+    lib.types.submodule (
+      { name, ... }:
+      {
+        options = {
+          path = lib.mkOption {
+            type = lib.types.str;
+            default = "${bundlePath}/${name}.vmdk";
+            description = "Absolute path to the virtual disk.";
+          };
+
+          size = lib.mkOption {
+            type = lib.types.ints.positive;
+            description = "Virtual disk capacity in GiB. The configured capacity cannot be smaller than the disk's current capacity.";
+          };
+
+          bus = lib.mkOption {
+            type = lib.types.enum [
+              "nvme"
+              "sata"
+            ];
+            default = "nvme";
+            description = "Virtual disk bus type.";
+          };
+
+          preallocate = lib.mkOption {
+            type = lib.types.bool;
+            default = false;
+            description = "Whether to pre-allocate disk space.";
+          };
+
+          split = lib.mkOption {
+            type = lib.types.bool;
+            default = false;
+            description = "Whether to split the virtual disk into multiple files.";
+          };
+        };
+      }
+    );
+
+  sharedFolderType = lib.types.submodule {
+    options = {
+      hostPath = lib.mkOption {
+        type = lib.types.str;
+        example = "/Users/asuna/projects";
+        description = "Absolute path to the directory on the host.";
+      };
+
+      readOnly = lib.mkOption {
+        type = lib.types.bool;
+        default = false;
+        description = "Whether the shared folder is read-only in the guest.";
+      };
+    };
+  };
+
   opticalDriveType = lib.types.submodule {
     options = {
       source = lib.mkOption {
@@ -121,43 +178,15 @@ let
         };
 
         disks = lib.mkOption {
+          type = lib.types.attrsOf (virtualDiskType config.path);
           default = { };
           description = "Virtual disks attached to the VM. Undeclared disks will be detached without deleting their files.";
-          type = lib.types.attrsOf (
-            lib.types.submodule (
-              { name, ... }: {
-                options = {
-                  path = lib.mkOption {
-                    type = lib.types.str;
-                    default = "${config.path}/${name}.vmdk";
-                    description = "Absolute path to the virtual disk.";
-                  };
-                  size = lib.mkOption {
-                    type = lib.types.ints.positive;
-                    description = "Virtual disk capacity in GiB. The configured capacity cannot be smaller than the disk's current capacity.";
-                  };
-                  bus = lib.mkOption {
-                    type = lib.types.enum [
-                      "nvme"
-                      "sata"
-                    ];
-                    default = "nvme";
-                    description = "Virtual disk bus type.";
-                  };
-                  preallocate = lib.mkOption {
-                    type = lib.types.bool;
-                    default = false;
-                    description = "Whether to pre-allocate disk space.";
-                  };
-                  split = lib.mkOption {
-                    type = lib.types.bool;
-                    default = false;
-                    description = "Whether to split the virtual disk into multiple files.";
-                  };
-                };
-              }
-            )
-          );
+        };
+
+        sharedFolders = lib.mkOption {
+          type = lib.types.attrsOf sharedFolderType;
+          default = { };
+          description = "Host directories shared with the VM. Undeclared shared folders are removed.";
         };
 
         opticalDrives = lib.mkOption {

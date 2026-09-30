@@ -19,6 +19,8 @@ pub(crate) struct VirtualMachine {
     #[serde(default)]
     pub disks: VirtualDisks,
     #[serde(default)]
+    pub shared_folders: SharedFolders,
+    #[serde(default)]
     pub optical_drives: OpticalDrives,
 }
 
@@ -85,6 +87,18 @@ pub(crate) enum DiskBus {
     Sata,
 }
 
+// Shared folders
+
+pub(crate) type SharedFolders = BTreeMap<String, SharedFolder>;
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct SharedFolder {
+    pub host_path: SharedFolderPath,
+    #[serde(default)]
+    pub read_only: bool,
+}
+
 // Optical drives
 
 pub(crate) type OpticalDrives = BTreeMap<String, OpticalDrive>;
@@ -116,6 +130,12 @@ pub(crate) struct BundlePath(PathBuf);
     derive(Debug, Deserialize, AsRef),
 )]
 pub(crate) struct DiskPath(PathBuf);
+
+#[nutype(
+    validate(predicate = |path| path.is_absolute()),
+    derive(Clone, Debug, Deserialize, AsRef),
+)]
+pub(crate) struct SharedFolderPath(PathBuf);
 
 #[nutype(
     validate(predicate = |path| valid_path(path, "iso")),

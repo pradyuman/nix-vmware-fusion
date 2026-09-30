@@ -30,7 +30,7 @@ let
         {
           home = {
             username = "test";
-            homeDirectory = "/Users/test";
+            homeDirectory = "/Users/asuna";
             stateVersion = "26.05";
           };
           programs.vmware-fusion = vmwareFusionConfig;
@@ -77,9 +77,10 @@ let
       secureBoot = true;
       networkAdapters.primary = { };
       disks.primary.size = 64;
+      sharedFolders.projects.hostPath = "/Users/asuna/projects";
       opticalDrives.installer.source = {
         type = "image";
-        path = "/Users/test/Downloads/nixos.iso";
+        path = "/Users/asuna/Downloads/nixos.iso";
       };
     };
   };
@@ -154,7 +155,7 @@ in
     expr = asuna;
     expected = {
       displayName = "asuna";
-      path = "/Users/test/Virtual Machines.localized/asuna.vmwarevm";
+      path = "/Users/asuna/Virtual Machines.localized/asuna.vmwarevm";
       guestOS = "arm-other6xlinux-64";
       vcpus = 4;
       memory = 8192;
@@ -166,16 +167,20 @@ in
         startConnected = true;
       };
       disks.primary = {
-        path = "/Users/test/Virtual Machines.localized/asuna.vmwarevm/primary.vmdk";
+        path = "/Users/asuna/Virtual Machines.localized/asuna.vmwarevm/primary.vmdk";
         size = 64;
         bus = "nvme";
         preallocate = false;
         split = false;
       };
+      sharedFolders.projects = {
+        hostPath = "/Users/asuna/projects";
+        readOnly = false;
+      };
       opticalDrives.installer = {
         source = {
           type = "image";
-          path = "/Users/test/Downloads/nixos.iso";
+          path = "/Users/asuna/Downloads/nixos.iso";
         };
         startConnected = true;
       };
