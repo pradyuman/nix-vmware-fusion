@@ -7,7 +7,7 @@ use super::{Action, NetworkAnswers, Plan, Snapshot, yes_no};
 pub(super) fn plan(configured: &Networks, snapshot: Snapshot) -> Result<Plan> {
     let Snapshot { state, answers } = snapshot;
 
-    let removals = state
+    let remove_actions = state
         .networks
         .keys()
         .filter(|name| !configured.contains_key(*name))
@@ -32,7 +32,7 @@ pub(super) fn plan(configured: &Networks, snapshot: Snapshot) -> Result<Plan> {
                 .map(|name| (name, NetworkMetadata::default()))
                 .collect(),
         },
-        actions: removals.into_iter().chain(network_actions).collect(),
+        actions: remove_actions.into_iter().chain(network_actions).collect(),
     })
 }
 
@@ -45,7 +45,7 @@ fn plan_network(
     let subnet_mask = network.subnet.netmask()?;
 
     let exists = network_exists(name, answers);
-    let addition = (!exists).then(|| Action::AddNetwork(name.clone()));
+    let add_action = (!exists).then(|| Action::AddNetwork(name.clone()));
 
     let set_actions = [
         (
@@ -80,7 +80,7 @@ fn plan_network(
         (!exists || observed != expected).then_some(action)
     });
 
-    Ok(addition.into_iter().chain(set_actions).collect())
+    Ok(add_action.into_iter().chain(set_actions).collect())
 }
 
 fn network_exists(name: &VmnetName, answers: &NetworkAnswers) -> bool {

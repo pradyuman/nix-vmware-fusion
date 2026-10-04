@@ -22,7 +22,7 @@ pub(crate) fn plan(configured: &VirtualDisks, snapshot: Snapshot) -> Result<Plan
         })
         .collect::<Vec<_>>();
 
-    let attachments = disk_matches.iter().filter_map(|(disk, image)| {
+    let placement_actions = disk_matches.iter().filter_map(|(disk, image)| {
         // Canonical paths let VMX attachments match images reached through aliases
         let attachment = image.and_then(|image| {
             snapshot.disk_attachments.iter().find(|attachment| {
@@ -42,7 +42,7 @@ pub(crate) fn plan(configured: &VirtualDisks, snapshot: Snapshot) -> Result<Plan
         }
     });
 
-    let detachments = snapshot
+    let detach_actions = snapshot
         .disk_attachments
         .iter()
         .filter(|attachment| {
@@ -55,7 +55,7 @@ pub(crate) fn plan(configured: &VirtualDisks, snapshot: Snapshot) -> Result<Plan
             label: attachment.label.clone(),
         });
 
-    let creations = disk_matches
+    let create_actions = disk_matches
         .iter()
         .filter(|(_, image)| image.is_none())
         .map(|(disk, _)| Action::Create {
@@ -64,13 +64,13 @@ pub(crate) fn plan(configured: &VirtualDisks, snapshot: Snapshot) -> Result<Plan
             format: configured_format(disk),
         });
 
-    let expansions = disk_matches
+    let expand_actions = disk_matches
         .iter()
         .filter_map(|(disk, image)| image.map(|image| plan_expansion(disk, image)))
         .filter_map(Result::transpose)
         .collect::<Result<Vec<_>>>()?;
 
-    let conversions = disk_matches.iter().filter_map(|(disk, image)| {
+    let convert_actions = disk_matches.iter().filter_map(|(disk, image)| {
         let format = configured_format(disk);
 
         image
@@ -83,11 +83,11 @@ pub(crate) fn plan(configured: &VirtualDisks, snapshot: Snapshot) -> Result<Plan
 
     // Detach unconfigured disks first so moves and attachments can reuse their labels
     Ok(Plan {
-        actions: detachments
-            .chain(creations)
-            .chain(attachments)
-            .chain(expansions)
-            .chain(conversions)
+        actions: detach_actions
+            .chain(create_actions)
+            .chain(placement_actions)
+            .chain(expand_actions)
+            .chain(convert_actions)
             .collect(),
     })
 }

@@ -9,7 +9,7 @@ struct PlanningState {
     unclaimed_attachments: Vec<NetworkAttachment>,
     occupied_labels: HashSet<NetworkAdapterLabel>,
     pending_adapters: Vec<(String, NetworkAdapter)>,
-    configurations: Vec<Action>,
+    configure_actions: Vec<Action>,
 }
 
 pub(crate) fn plan(configured: &NetworkAdapters, snapshot: Snapshot) -> Result<Plan> {
@@ -34,7 +34,7 @@ impl PlanningState {
             unclaimed_attachments,
             occupied_labels,
             pending_adapters: Vec::new(),
-            configurations: Vec::new(),
+            configure_actions: Vec::new(),
         }
     }
 
@@ -51,7 +51,7 @@ impl PlanningState {
         match attached {
             Some(attached) => {
                 if !matches_configuration(&attached, adapter) {
-                    self.configurations.push(Action::Configure {
+                    self.configure_actions.push(Action::Configure {
                         label: attached.label,
                         name: name.to_owned(),
                         adapter: adapter.clone(),
@@ -81,7 +81,7 @@ impl PlanningState {
                     state.unclaimed_attachments.remove(0).label
                 };
 
-                state.configurations.push(Action::Configure {
+                state.configure_actions.push(Action::Configure {
                     label,
                     name,
                     adapter,
@@ -92,7 +92,7 @@ impl PlanningState {
     }
 
     fn into_plan(self) -> Plan {
-        let removals = self
+        let remove_actions = self
             .unclaimed_attachments
             .into_iter()
             .map(|adapter| Action::Remove {
@@ -100,7 +100,7 @@ impl PlanningState {
             });
 
         Plan {
-            actions: removals.chain(self.configurations).collect(),
+            actions: remove_actions.chain(self.configure_actions).collect(),
         }
     }
 }

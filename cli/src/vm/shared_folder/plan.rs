@@ -10,7 +10,7 @@ struct PlanningState {
     unclaimed_folders: Vec<ObservedSharedFolder>,
     occupied_labels: HashSet<SharedFolderLabel>,
     pending_folders: Vec<(String, SharedFolder)>,
-    configurations: Vec<Action>,
+    configure_actions: Vec<Action>,
 }
 
 pub(crate) fn plan(configured: &SharedFolders, snapshot: Snapshot) -> Result<Plan> {
@@ -46,7 +46,7 @@ impl PlanningState {
             unclaimed_folders: snapshot.shared_folders,
             occupied_labels,
             pending_folders: Vec::new(),
-            configurations: Vec::new(),
+            configure_actions: Vec::new(),
         })
     }
 
@@ -60,7 +60,7 @@ impl PlanningState {
         match observed {
             Some(observed) => {
                 if !matches_configuration(&observed, folder) {
-                    self.configurations.push(Action::Configure {
+                    self.configure_actions.push(Action::Configure {
                         label: observed.label,
                         name: name.to_owned(),
                         folder: folder.clone(),
@@ -88,7 +88,7 @@ impl PlanningState {
                     state.unclaimed_folders.remove(0).label
                 };
 
-                state.configurations.push(Action::Configure {
+                state.configure_actions.push(Action::Configure {
                     label,
                     name,
                     folder,
@@ -99,7 +99,7 @@ impl PlanningState {
     }
 
     fn into_plan(self) -> Plan {
-        let removals = self
+        let remove_actions = self
             .unclaimed_folders
             .into_iter()
             .map(|folder| Action::Remove {
@@ -107,7 +107,7 @@ impl PlanningState {
             });
 
         Plan {
-            actions: removals.chain(self.configurations).collect(),
+            actions: remove_actions.chain(self.configure_actions).collect(),
         }
     }
 }
