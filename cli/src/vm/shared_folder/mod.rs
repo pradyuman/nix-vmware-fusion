@@ -1,27 +1,27 @@
 use std::path::PathBuf;
 
 mod inspect;
-pub(crate) use inspect::inspect;
+pub(super) use inspect::inspect;
 
 mod plan;
-pub(crate) use plan::plan;
+pub(super) use plan::plan;
 
 mod stage;
-pub(crate) use stage::stage;
+pub(super) use stage::stage;
 
 use crate::vm::schema::SharedFolder;
 
-pub(crate) type SharedFolderLabel = String;
+pub(super) type SharedFolderLabel = String;
 
 // Inspect
 
 #[derive(Debug)]
-pub(crate) struct Snapshot {
+pub(super) struct Snapshot {
     pub shared_folders: Vec<ObservedSharedFolder>,
 }
 
 #[derive(Debug)]
-pub(crate) struct ObservedSharedFolder {
+pub(super) struct ObservedSharedFolder {
     pub label: SharedFolderLabel,
     pub guest_name: String,
     pub host_path: PathBuf,
@@ -34,12 +34,12 @@ pub(crate) struct ObservedSharedFolder {
 // Plan
 
 #[derive(Debug)]
-pub(crate) struct Plan {
+pub(super) struct Plan {
     pub actions: Vec<Action>,
 }
 
 #[derive(Debug)]
-pub(crate) enum Action {
+pub(super) enum Action {
     Configure {
         label: SharedFolderLabel,
         name: String,

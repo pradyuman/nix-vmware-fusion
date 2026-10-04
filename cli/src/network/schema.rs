@@ -5,16 +5,16 @@ use anyhow::{Result, ensure};
 use nutype::nutype;
 use serde::Deserialize;
 
-pub(crate) type Networks = BTreeMap<VmnetName, Network>;
+pub(super) type Networks = BTreeMap<VmnetName, Network>;
 
 #[nutype(
     validate(predicate = |name| parse_vmnet_number(name).is_some()),
     derive(Clone, Debug, Deserialize, Serialize, AsRef, Display, Eq, Ord, PartialEq, PartialOrd)
 )]
-pub(crate) struct VmnetName(String);
+pub(super) struct VmnetName(String);
 
 impl VmnetName {
-    pub(crate) fn number(&self) -> u8 {
+    pub(super) fn number(&self) -> u8 {
         parse_vmnet_number(self.as_ref()).expect("validated VMware network name")
     }
 }
@@ -28,7 +28,7 @@ fn parse_vmnet_number(name: &str) -> Option<u8> {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct Network {
+pub(super) struct Network {
     pub subnet: Subnet,
     pub dhcp: Toggle,
     pub nat: Toggle,
@@ -37,13 +37,13 @@ pub(crate) struct Network {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct Subnet {
+pub(super) struct Subnet {
     pub address: Ipv4Addr,
     pub prefix_length: Ipv4PrefixLength,
 }
 
 impl Subnet {
-    pub(crate) fn netmask(&self) -> Result<Ipv4Addr> {
+    pub(super) fn netmask(&self) -> Result<Ipv4Addr> {
         let netmask = self.prefix_length.netmask();
         let address = u32::from(self.address);
 
@@ -63,7 +63,7 @@ impl Subnet {
     validate(less_or_equal = 32),
     derive(Clone, Copy, Debug, Deserialize, Into)
 )]
-pub(crate) struct Ipv4PrefixLength(u8);
+pub(super) struct Ipv4PrefixLength(u8);
 
 impl Ipv4PrefixLength {
     fn netmask(self) -> Ipv4Addr {
@@ -78,7 +78,7 @@ impl Ipv4PrefixLength {
 }
 
 #[derive(Debug, Deserialize)]
-pub(crate) struct Toggle {
+pub(super) struct Toggle {
     pub enable: bool,
 }
 

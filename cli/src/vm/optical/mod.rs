@@ -7,26 +7,26 @@ use super::state::State;
 mod commit;
 
 mod inspect;
-pub(crate) use inspect::inspect;
+pub(super) use inspect::inspect;
 
 mod plan;
-pub(crate) use plan::plan;
+pub(super) use plan::plan;
 
 mod stage;
-pub(crate) use stage::stage;
+pub(super) use stage::stage;
 
-pub(crate) type OpticalDriveLabel = String;
+pub(super) type OpticalDriveLabel = String;
 
 // Inspect
 
 #[derive(Debug)]
-pub(crate) struct Snapshot {
+pub(super) struct Snapshot {
     pub state: State,
     pub optical_attachments: Vec<OpticalAttachment>,
 }
 
 #[derive(Debug)]
-pub(crate) struct OpticalAttachment {
+pub(super) struct OpticalAttachment {
     pub label: OpticalDriveLabel,
     pub backing_type: Option<String>,
     pub backing_path: Option<PathBuf>,
@@ -37,13 +37,13 @@ pub(crate) struct OpticalAttachment {
 // Plan
 
 #[derive(Debug)]
-pub(crate) struct Plan {
+pub(super) struct Plan {
     pub state: State,
     pub actions: Vec<Action>,
 }
 
 #[derive(Debug)]
-pub(crate) enum Action {
+pub(super) enum Action {
     Configure {
         name: String,
         label: Option<OpticalDriveLabel>,
@@ -56,6 +56,6 @@ pub(crate) enum Action {
 
 // Stage
 
-pub(crate) struct StagedChange {
+pub(super) struct StagedChange {
     state: State,
 }

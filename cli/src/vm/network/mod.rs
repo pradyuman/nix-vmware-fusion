@@ -1,25 +1,25 @@
 use crate::vm::schema::{NetworkAdapter, NetworkAdapterModel, NetworkMode};
 
 mod inspect;
-pub(crate) use inspect::inspect;
+pub(super) use inspect::inspect;
 
 mod plan;
-pub(crate) use plan::plan;
+pub(super) use plan::plan;
 
 mod stage;
-pub(crate) use stage::stage;
+pub(super) use stage::stage;
 
 type NetworkAdapterLabel = String;
 
 // Inspect
 
 #[derive(Debug)]
-pub(crate) struct Snapshot {
+pub(super) struct Snapshot {
     pub network_attachments: Vec<NetworkAttachment>,
 }
 
 #[derive(Debug)]
-pub(crate) struct NetworkAttachment {
+pub(super) struct NetworkAttachment {
     pub label: NetworkAdapterLabel,
     pub external_id: String,
     pub mode: String,
@@ -31,7 +31,7 @@ pub(crate) struct NetworkAttachment {
 // Plan
 
 #[derive(Debug)]
-pub(crate) struct Plan {
+pub(super) struct Plan {
     actions: Vec<Action>,
 }
 

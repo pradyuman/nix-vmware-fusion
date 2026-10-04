@@ -2,28 +2,28 @@ use std::path::PathBuf;
 
 mod commit;
 mod inspect;
-pub(crate) use inspect::inspect;
+pub(super) use inspect::inspect;
 
 mod plan;
-pub(crate) use plan::plan;
+pub(super) use plan::plan;
 
 mod stage;
-pub(crate) use stage::stage;
+pub(super) use stage::stage;
 
 #[cfg(all(test, feature = "vmware-tests"))]
-pub(crate) use stage::create;
+pub(super) use stage::create;
 
 // Inspect
 
 #[derive(Debug)]
-pub(crate) struct Snapshot {
+pub(super) struct Snapshot {
     pub target_path: PathBuf,
     raw_contents: Option<String>,
 }
 
 // Plan
 
-pub(crate) struct Plan {
+pub(super) struct Plan {
     pub snapshot: Snapshot,
     guest_os: String,
     entries: Vec<(&'static str, String)>,
@@ -31,7 +31,7 @@ pub(crate) struct Plan {
 
 // Stage
 
-pub(crate) struct StagedChange {
+pub(super) struct StagedChange {
     pub snapshot: Snapshot,
     pub updated_contents: String,
 }

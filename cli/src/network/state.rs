@@ -8,28 +8,28 @@ use crate::state_file::PersistentState;
 
 use super::schema::VmnetName;
 
-pub(crate) type ManagedNetworks = BTreeMap<VmnetName, NetworkMetadata>;
+pub(super) type ManagedNetworks = BTreeMap<VmnetName, NetworkMetadata>;
 
 #[derive(Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct State {
+pub(super) struct State {
     #[serde(default)]
     pub networks: ManagedNetworks,
 }
 
 #[derive(Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
-pub(crate) struct NetworkMetadata {}
+pub(super) struct NetworkMetadata {}
 
 impl PersistentState for State {
     const FORMAT_VERSION: u64 = 1;
 }
 
 impl State {
-    pub(crate) fn load() -> Result<Self> {
+    pub(super) fn load() -> Result<Self> {
         Self::load_from(&CONFIG.network_state)
     }
 
-    pub(crate) fn save(&self) -> Result<()> {
+    pub(super) fn save(&self) -> Result<()> {
         self.save_to(&CONFIG.network_state)
     }
 }

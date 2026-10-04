@@ -10,17 +10,17 @@ use super::optical::OpticalDriveLabel;
 
 const FILENAME: &str = ".nix-vmware-fusion.json";
 
-pub(crate) type OpticalDriveBindings = BTreeMap<String, OpticalDriveBinding>;
+pub(super) type OpticalDriveBindings = BTreeMap<String, OpticalDriveBinding>;
 
 #[derive(Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct State {
+pub(super) struct State {
     #[serde(default)]
     pub optical_drives: OpticalDriveBindings,
 }
 
 #[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub(crate) struct OpticalDriveBinding {
+pub(super) struct OpticalDriveBinding {
     pub label: OpticalDriveLabel,
 }
 
@@ -29,11 +29,11 @@ impl PersistentState for State {
 }
 
 impl State {
-    pub(crate) fn load(bundle_path: &Path) -> Result<Self> {
+    pub(super) fn load(bundle_path: &Path) -> Result<Self> {
         Self::load_from(&bundle_path.join(FILENAME))
     }
 
-    pub(crate) fn save(&self, bundle_path: &Path) -> Result<()> {
+    pub(super) fn save(&self, bundle_path: &Path) -> Result<()> {
         self.save_to(&bundle_path.join(FILENAME))
     }
 }

@@ -7,24 +7,24 @@ use crate::vm::schema::DiskBus;
 mod commit;
 
 mod format;
-pub(crate) use format::DiskFormat;
+pub(super) use format::DiskFormat;
 
 mod inspect;
-pub(crate) use inspect::inspect;
+pub(super) use inspect::inspect;
 
 mod plan;
-pub(crate) use plan::plan;
+pub(super) use plan::plan;
 
 mod stage;
-pub(crate) use stage::stage;
+pub(super) use stage::stage;
 
-pub(crate) const BYTES_PER_GIB: u64 = 1024_u64.pow(3);
+pub(super) const BYTES_PER_GIB: u64 = 1024_u64.pow(3);
 
 #[nutype(derive(Clone, Debug, Deserialize, AsRef, Display, Eq, PartialEq))]
-pub(crate) struct DiskLabel(String);
+pub(super) struct DiskLabel(String);
 
 impl DiskLabel {
-    pub(crate) fn bus(&self) -> Option<DiskBus> {
+    pub(super) fn bus(&self) -> Option<DiskBus> {
         if self.as_ref().starts_with("nvme") {
             Some(DiskBus::Nvme)
         } else if self.as_ref().starts_with("sata") {
@@ -38,26 +38,26 @@ impl DiskLabel {
 // Inspect
 
 #[derive(Debug)]
-pub(crate) struct Snapshot {
+pub(super) struct Snapshot {
     pub disk_images: Vec<DiskImage>,
     pub disk_attachments: Vec<DiskAttachment>,
 }
 
 #[derive(Debug)]
-pub(crate) struct DiskImage {
+pub(super) struct DiskImage {
     pub path: PathBuf,
     pub canonical_path: PathBuf,
     pub state: DiskState,
 }
 
 #[derive(Debug, PartialEq)]
-pub(crate) struct DiskState {
+pub(super) struct DiskState {
     pub capacity_bytes: NonZeroU64,
     pub format: DiskFormat,
 }
 
 #[derive(Debug)]
-pub(crate) struct DiskAttachment {
+pub(super) struct DiskAttachment {
     pub label: DiskLabel,
     pub canonical_path: Option<PathBuf>,
 }
@@ -65,12 +65,12 @@ pub(crate) struct DiskAttachment {
 // Plan
 
 #[derive(Debug)]
-pub(crate) struct Plan {
+pub(super) struct Plan {
     pub actions: Vec<Action>,
 }
 
 #[derive(Debug)]
-pub(crate) enum Action {
+pub(super) enum Action {
     Create {
         path: PathBuf,
         size: NonZeroU64,
@@ -99,7 +99,7 @@ pub(crate) enum Action {
 
 // Stage
 
-pub(crate) struct StagedChange {
+pub(super) struct StagedChange {
     commit_actions: Vec<CommitAction>,
 }
 

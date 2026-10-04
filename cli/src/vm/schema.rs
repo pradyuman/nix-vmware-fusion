@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct VirtualMachine {
+pub(super) struct VirtualMachine {
     pub display_name: String,
     pub path: BundlePath,
     #[serde(rename = "guestOS")]
@@ -26,11 +26,11 @@ pub(crate) struct VirtualMachine {
 
 // Network adapters
 
-pub(crate) type NetworkAdapters = BTreeMap<String, NetworkAdapter>;
+pub(super) type NetworkAdapters = BTreeMap<String, NetworkAdapter>;
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct NetworkAdapter {
+pub(super) struct NetworkAdapter {
     #[serde(default)]
     pub mode: NetworkMode,
     pub vmnet: Option<String>,
@@ -42,7 +42,7 @@ pub(crate) struct NetworkAdapter {
 
 #[derive(Debug, Default, Deserialize, Clone, Copy, PartialEq)]
 #[serde(rename_all = "kebab-case")]
-pub(crate) enum NetworkMode {
+pub(super) enum NetworkMode {
     #[default]
     Nat,
     Bridged,
@@ -52,7 +52,7 @@ pub(crate) enum NetworkMode {
 
 #[derive(Debug, Default, Deserialize, Clone, Copy, PartialEq)]
 #[serde(rename_all = "lowercase")]
-pub(crate) enum NetworkAdapterModel {
+pub(super) enum NetworkAdapterModel {
     #[default]
     Vmxnet3,
     E1000e,
@@ -65,10 +65,10 @@ fn default_true() -> bool {
 
 // Virtual disks
 
-pub(crate) type VirtualDisks = BTreeMap<String, VirtualDisk>;
+pub(super) type VirtualDisks = BTreeMap<String, VirtualDisk>;
 
 #[derive(Debug, Deserialize)]
-pub(crate) struct VirtualDisk {
+pub(super) struct VirtualDisk {
     pub path: DiskPath,
     pub size: NonZeroU64,
     #[serde(default)]
@@ -81,7 +81,7 @@ pub(crate) struct VirtualDisk {
 
 #[derive(Debug, Default, Deserialize, Clone, Copy, PartialEq)]
 #[serde(rename_all = "lowercase")]
-pub(crate) enum DiskBus {
+pub(super) enum DiskBus {
     #[default]
     Nvme,
     Sata,
@@ -89,11 +89,11 @@ pub(crate) enum DiskBus {
 
 // Shared folders
 
-pub(crate) type SharedFolders = BTreeMap<String, SharedFolder>;
+pub(super) type SharedFolders = BTreeMap<String, SharedFolder>;
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct SharedFolder {
+pub(super) struct SharedFolder {
     pub host_path: SharedFolderPath,
     #[serde(default)]
     pub read_only: bool,
@@ -101,11 +101,11 @@ pub(crate) struct SharedFolder {
 
 // Optical drives
 
-pub(crate) type OpticalDrives = BTreeMap<String, OpticalDrive>;
+pub(super) type OpticalDrives = BTreeMap<String, OpticalDrive>;
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct OpticalDrive {
+pub(super) struct OpticalDrive {
     pub source: OpticalDriveSource,
     #[serde(default = "default_true")]
     pub start_connected: bool,
@@ -113,7 +113,7 @@ pub(crate) struct OpticalDrive {
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(tag = "type", rename_all = "lowercase")]
-pub(crate) enum OpticalDriveSource {
+pub(super) enum OpticalDriveSource {
     Image { path: OpticalImagePath },
 }
 
@@ -123,25 +123,25 @@ pub(crate) enum OpticalDriveSource {
     validate(predicate = |path| valid_path(path, "vmwarevm")),
     derive(Debug, Deserialize, AsRef),
 )]
-pub(crate) struct BundlePath(PathBuf);
+pub(super) struct BundlePath(PathBuf);
 
 #[nutype(
     validate(predicate = |path| valid_path(path, "vmdk")),
     derive(Debug, Deserialize, AsRef),
 )]
-pub(crate) struct DiskPath(PathBuf);
+pub(super) struct DiskPath(PathBuf);
 
 #[nutype(
     validate(predicate = |path| path.is_absolute()),
     derive(Clone, Debug, Deserialize, AsRef),
 )]
-pub(crate) struct SharedFolderPath(PathBuf);
+pub(super) struct SharedFolderPath(PathBuf);
 
 #[nutype(
     validate(predicate = |path| valid_path(path, "iso")),
     derive(Clone, Debug, Deserialize, AsRef),
 )]
-pub(crate) struct OpticalImagePath(PathBuf);
+pub(super) struct OpticalImagePath(PathBuf);
 
 fn valid_path(path: &Path, extension: &str) -> bool {
     path.is_absolute() && path.extension().is_some_and(|actual| actual == extension)

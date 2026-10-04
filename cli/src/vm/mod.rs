@@ -17,7 +17,7 @@ mod test_support;
 
 // Inspect
 
-pub(crate) struct Snapshot {
+struct Snapshot {
     vmx: vmx::Snapshot,
     network: network::Snapshot,
     disk: disk::Snapshot,
@@ -43,7 +43,7 @@ fn inspect(schema: &schema::VirtualMachine) -> Result<Snapshot> {
 
 // Plan
 
-pub(crate) struct Plan {
+struct Plan {
     vmx: vmx::Plan,
     network: network::Plan,
     disk: disk::Plan,
@@ -69,7 +69,7 @@ fn plan(schema: &schema::VirtualMachine, snapshot: Snapshot) -> Result<Plan> {
 
 // Stage
 
-pub(crate) struct StagedChange {
+struct StagedChange {
     vmx: vmx::StagedChange,
     disk: disk::StagedChange,
     optical: optical::StagedChange,
