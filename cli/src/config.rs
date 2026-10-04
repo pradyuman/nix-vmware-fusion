@@ -13,6 +13,8 @@ pub(crate) struct Config {
     pub qemu_img: PathBuf,
     pub vdisk_manager: PathBuf,
     pub vmcli: PathBuf,
+    pub vmnet_cfgcli: PathBuf,
+    pub vmnet_cli: PathBuf,
 }
 
 impl Config {

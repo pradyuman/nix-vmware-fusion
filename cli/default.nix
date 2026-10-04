@@ -26,6 +26,8 @@ rustPlatform.buildRustPackage {
       --set NIX_VMWARE_FUSION_QEMU_IMG ${lib.escapeShellArg (lib.getExe' qemu-utils "qemu-img")} \
       --set NIX_VMWARE_FUSION_VDISK_MANAGER ${lib.escapeShellArg (lib.getExe' commandLineTools "vmware-vdiskmanager")} \
       --set NIX_VMWARE_FUSION_VMCLI ${lib.escapeShellArg (lib.getExe' commandLineTools "vmcli")} \
+      --set NIX_VMWARE_FUSION_VMNET_CFGCLI ${lib.escapeShellArg (lib.getExe' commandLineTools "vmnet-cfgcli")} \
+      --set NIX_VMWARE_FUSION_VMNET_CLI ${lib.escapeShellArg (lib.getExe' commandLineTools "vmnet-cli")} \
       --prefix PATH : ${
         lib.makeBinPath [
           bash

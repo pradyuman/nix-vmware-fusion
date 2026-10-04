@@ -43,13 +43,15 @@ let
   enabledSystem = mkSystem { enable = true; };
   networkedSystem = mkSystem {
     enable = true;
-    networking.text = ''
-      VERSION=1,0
-      answer VNET_1_DHCP yes
-      answer VNET_1_HOSTONLY_NETMASK 255.255.255.0
-      answer VNET_1_HOSTONLY_SUBNET 192.0.2.0
-      answer VNET_1_VIRTUAL_ADAPTER yes
-    '';
+    networking.networks.vmnet1 = {
+      subnet = {
+        address = "192.0.2.0";
+        prefixLength = 24;
+      };
+      dhcp.enable = true;
+      nat.enable = false;
+      hostAdapter.enable = true;
+    };
   };
   uninstallingSystem = mkSystem { onActivation.cleanup = "uninstall"; };
   purgingSystem = mkSystem { onActivation.cleanup = "purge"; };
@@ -98,15 +100,14 @@ in
     expected = true;
   };
 
-  testNetworkingTextDefaultsToNull = {
-    expr = defaultSystem.config.programs.vmware-fusion.networking.text;
-    expected = null;
+  testNetworkingDefaultsToNoDeclaredNetworks = {
+    expr = defaultSystem.config.programs.vmware-fusion.networking.networks;
+    expected = { };
   };
 
-  testNetworkingTextIsInstalled = {
+  testNetworkReconciliationAlwaysRuns = {
     expr =
-      lib.hasInfix "vmware-fusion-networking" networkedActivation
-      && lib.hasInfix "/usr/bin/install -o root -g wheel -m 0644" networkedActivation;
+      lib.hasInfix "network apply" enabledActivation && lib.hasInfix "network apply" networkedActivation;
     expected = true;
   };
 

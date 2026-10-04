@@ -1,12 +1,13 @@
 use std::collections::BTreeMap;
 
 use crate::vm::schema::{OpticalDrive, OpticalDriveSource, OpticalDrives};
+use crate::vm::state::{OpticalDriveBindings, State};
 
 use super::{Action, OpticalAttachment, Plan, Snapshot};
 
 pub(crate) fn plan(configured: &OpticalDrives, snapshot: Snapshot) -> Plan {
     let Snapshot {
-        mut state,
+        state,
         optical_attachments,
     } = snapshot;
 
@@ -15,11 +16,10 @@ pub(crate) fn plan(configured: &OpticalDrives, snapshot: Snapshot) -> Plan {
         .map(|attachment| (attachment.label.clone(), attachment))
         .collect::<BTreeMap<_, _>>();
 
-    let (retained_bindings, removed_bindings) = state
+    let (optical_drives, removed_bindings) = state
         .optical_drives
         .into_iter()
-        .partition(|(name, _)| configured.contains_key(name));
-    state.optical_drives = retained_bindings;
+        .partition::<OpticalDriveBindings, _>(|(name, _)| configured.contains_key(name));
 
     // Remove only drives previously claimed in our state file.
     let removals = removed_bindings
@@ -30,8 +30,7 @@ pub(crate) fn plan(configured: &OpticalDrives, snapshot: Snapshot) -> Plan {
         });
 
     let configurations = configured.iter().filter_map(|(name, drive)| {
-        let label = state
-            .optical_drives
+        let label = optical_drives
             .get(name)
             .map(|binding| binding.label.clone());
 
@@ -49,7 +48,10 @@ pub(crate) fn plan(configured: &OpticalDrives, snapshot: Snapshot) -> Plan {
 
     let actions = removals.chain(configurations).collect();
 
-    Plan { state, actions }
+    Plan {
+        state: State { optical_drives },
+        actions,
+    }
 }
 
 fn matches_configuration(attached: &OpticalAttachment, configured: &OpticalDrive) -> bool {
@@ -69,7 +71,7 @@ mod tests {
     use std::path::{Path, PathBuf};
 
     use crate::vm::schema::OpticalImagePath;
-    use crate::vm::state::{OpticalDriveBinding, State};
+    use crate::vm::state::OpticalDriveBinding;
 
     use super::*;
 

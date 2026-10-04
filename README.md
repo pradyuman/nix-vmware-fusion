@@ -68,21 +68,27 @@ the system profile:
 - VMware Fusion's bundled command-line tools, including `vmrun`, `vmcli`,
   `vmrest`, `vmnet-cli`, and `ovftool`
 
-To manage VMware Fusion's networking config, set:
+To manage VMware Fusion's networks, set:
 
 ```nix
-programs.vmware-fusion.networking.text = ''
-  VERSION=1,0
-  answer VNET_1_DHCP yes
-  answer VNET_1_HOSTONLY_NETMASK 255.255.255.0
-  answer VNET_1_HOSTONLY_SUBNET 192.168.200.0
-  answer VNET_1_VIRTUAL_ADAPTER yes
-  ...
-'';
+programs.vmware-fusion.networking.networks.vmnet8 = {
+  subnet = {
+    address = "192.168.200.0";
+    prefixLength = 24;
+  };
+  dhcp.enable = true;
+  nat.enable = true;
+  hostAdapter.enable = true;
+};
 ```
 
-The module sets the new configuration during activation, but you will need to
-restart VMware's networking services for the changes to take effect.
+The module only adds, updates, or removes networks it manages or has previously
+managed.
+
+> [!IMPORTANT]
+> `nix-vmware-fusion` will return an error if you try to update networking
+> settings while any virtual machines are running. Make sure to shut down all
+> virtual machines before activating a networking change.
 
 #### Directly
 
@@ -294,9 +300,9 @@ Each optical drive supports the following settings:
 | `source.path`    | String    | —       | Absolute path to the ISO image (required)       |
 | `startConnected` | Boolean   | `true`  | Whether to connect the drive when the VM starts |
 
-Managed optical drives can be updated by changing `source` or detached by
-removing their declaration. Optical drives not managed by the module are left
-untouched.
+Optical drives can be updated by changing `source` or detached by removing
+their declaration. The module only changes drives declared here or previously
+managed by it.
 
 ## Remove VMware Fusion
 

@@ -10,7 +10,7 @@ main() {
   local target_app="/Applications/VMware Fusion.app"
   local shared_support="/Library/Application Support/VMware"
   local fusion_support="$shared_support/VMware Fusion"
-  local services_script="$fusion_support/Services/Contents/Library/services/services.sh"
+  local services_script="$target_app/Contents/Library/services/services.sh"
 
   # Resolve the selected user's home directory.
   local current_user
@@ -46,7 +46,7 @@ main() {
 
   # Refuse to purge while VMware Fusion or a virtual machine is running.
   if /usr/bin/pgrep -x "VMware Fusion" >/dev/null \
-    || /usr/bin/pgrep -f "/VMware Fusion.app/Contents/Library/vmware-vmx" >/dev/null; then
+    || /usr/bin/pgrep -x "vmware-vmx" >/dev/null; then
     die "VMware Fusion or one of its virtual machines is running. Shut down its virtual machines and quit the app before purging."
   fi
 
@@ -110,6 +110,7 @@ main() {
   /usr/bin/sudo /bin/rm -rf \
     "$target_app" \
     "$fusion_support" \
+    "/Library/Application Support/nix-vmware-fusion" \
     "/Library/Application Support/VMware Fusion" \
     "/Library/Preferences/VMware Fusion" \
     "/Library/Logs/VMware Fusion Services.log" \

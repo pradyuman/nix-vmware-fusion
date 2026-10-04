@@ -3,9 +3,10 @@ set -euo pipefail
 
 target_app="/Applications/VMware Fusion.app"
 
-# Removing an application bundle while it is running is unsafe.
-if /usr/bin/pgrep -x "VMware Fusion" >/dev/null; then
-  echo "VMware Fusion is running. Shut down its virtual machines and quit the app before uninstalling." >&2
+# Removing an application bundle while Fusion or one of its virtual machines is running is unsafe.
+if /usr/bin/pgrep -x "VMware Fusion" >/dev/null \
+  || /usr/bin/pgrep -x "vmware-vmx" >/dev/null; then
+  echo "VMware Fusion or one of its virtual machines is running. Shut down its virtual machines and quit the app before uninstalling." >&2
   exit 1
 fi
 

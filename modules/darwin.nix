@@ -9,23 +9,76 @@ let
   cfg = config.programs.vmware-fusion;
   localPkgs = import ../pkgs { inherit pkgs; };
 
-  networkingFile =
-    if cfg.networking.text == null then
-      null
-    else
-      pkgs.writeText "nix-vmware-fusion-networking" cfg.networking.text;
+  toggleType = lib.types.submodule {
+    options.enable = lib.mkOption {
+      type = lib.types.bool;
+      description = "Whether to enable the feature.";
+    };
+  };
+
+  networkType = lib.types.submodule {
+    options = {
+      subnet = lib.mkOption {
+        type = lib.types.submodule {
+          options = {
+            address = lib.mkOption {
+              type = lib.types.nonEmptyStr;
+              example = "192.168.200.0";
+              description = "IPv4 network address.";
+            };
+
+            prefixLength = lib.mkOption {
+              type = lib.types.ints.between 0 32;
+              example = 24;
+              description = "IPv4 network prefix length.";
+            };
+          };
+        };
+        description = "IPv4 subnet assigned to the VMware network.";
+      };
+
+      dhcp = lib.mkOption {
+        type = toggleType;
+        description = "DHCP service for the VMware network.";
+      };
+
+      nat = lib.mkOption {
+        type = toggleType;
+        description = "NAT service for the VMware network.";
+      };
+
+      hostAdapter = lib.mkOption {
+        type = toggleType;
+        description = "Virtual host adapter for the VMware network.";
+      };
+    };
+  };
+
+  networkConfiguration = pkgs.writeText "nix-vmware-fusion-networks.json" (
+    builtins.toJSON cfg.networking.networks
+  );
 in
 {
   options.programs.vmware-fusion = {
     enable = lib.mkEnableOption "VMware Fusion";
 
-    networking.text = lib.mkOption {
-      type = lib.types.nullOr lib.types.lines;
-      default = null;
+    networking.networks = lib.mkOption {
+      type = lib.types.attrsOf networkType;
+      default = { };
+      example = {
+        vmnet8 = {
+          subnet = {
+            address = "192.168.200.0";
+            prefixLength = 24;
+          };
+          dhcp.enable = true;
+          nat.enable = true;
+          hostAdapter.enable = true;
+        };
+      };
       description = ''
-        Contents of VMware Fusion's system-wide networking file. During
-        activation, the module replaces the existing file with this text.
-        When unset, the module leaves the networking configuration unmanaged.
+        VMware Fusion networks to manage. Removing a declaration removes its
+        network.
       '';
     };
 
@@ -82,17 +135,7 @@ in
           ${lib.getExe localPkgs.cli} install
         fi
 
-        ${lib.optionalString (cfg.networking.text != null) ''
-          source_networking=${lib.escapeShellArg networkingFile}
-          target_networking="/Library/Preferences/VMware Fusion/networking"
-
-          if [[ ! -f "$target_networking" ]] \
-            || ! /usr/bin/cmp -s "$source_networking" "$target_networking"; then
-            echo "Updating VMware Fusion's networking configuration..."
-            /bin/mkdir -p "''${target_networking%/*}"
-            /usr/bin/install -o root -g wheel -m 0644 "$source_networking" "$target_networking"
-          fi
-        ''}
+        ${lib.getExe localPkgs.cli} network apply ${lib.escapeShellArg networkConfiguration}
       '';
     })
 

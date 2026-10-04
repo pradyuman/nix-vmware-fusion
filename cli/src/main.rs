@@ -6,7 +6,9 @@ use std::process::ExitCode;
 use crate::config::CONFIG;
 
 mod config;
+mod network;
 mod script;
+mod state_file;
 mod vm;
 
 #[derive(Parser)]
@@ -18,6 +20,12 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
+    /// Manage system-wide networks
+    Network {
+        #[command(subcommand)]
+        command: NetworkCommands,
+    },
+
     /// Create or update virtual machines
     Vm {
         #[command(subcommand)]
@@ -43,6 +51,12 @@ enum Commands {
 }
 
 #[derive(Subcommand)]
+enum NetworkCommands {
+    /// Apply a network configuration from a JSON file
+    Apply { file: PathBuf },
+}
+
+#[derive(Subcommand)]
 enum VmCommands {
     /// Apply a virtual machine configuration from a JSON file
     Apply { file: PathBuf },
@@ -50,6 +64,12 @@ enum VmCommands {
 
 fn main() -> Result<ExitCode> {
     match Cli::parse().command {
+        Commands::Network {
+            command: NetworkCommands::Apply { file },
+        } => {
+            network::apply(&file)?;
+            Ok(ExitCode::SUCCESS)
+        }
         Commands::Vm {
             command: VmCommands::Apply { file },
         } => {
