@@ -4,7 +4,7 @@ use std::path::Path;
 
 use crate::config::CONFIG;
 
-use super::{Plan, StagedChange};
+use super::{Action, Plan, StagedChange};
 
 impl StagedChange {
     pub(crate) fn is_noop(&self) -> bool {
@@ -20,10 +20,10 @@ pub(crate) fn stage(draft_path: &Path, plan: &Plan) -> Result<()> {
         None => create(draft_path, &plan.guest_os)?,
     }
 
-    // Apply every entry to the draft before returning anything to commit
-    set_entries(draft_path, &plan.entries)?;
-
-    Ok(())
+    plan.actions.iter().try_for_each(|action| match action {
+        Action::Set(key, value) => set_entry(draft_path, key, value),
+        Action::Remove(key) => remove_entry(draft_path, key),
+    })
 }
 
 pub(crate) fn create(path: &Path, guest_os: &str) -> Result<()> {
@@ -46,16 +46,30 @@ pub(crate) fn create(path: &Path, guest_os: &str) -> Result<()> {
     Ok(())
 }
 
-fn set_entries(path: &Path, entries: &[(&str, String)]) -> Result<()> {
-    for (key, value) in entries {
-        duct::cmd!(
-            &CONFIG.dict_tool,
-            "-q",
-            "set",
-            path,
-            format!("{key}={value}")
-        )
-        .run()?;
+fn set_entry(path: &Path, key: &str, value: &str) -> Result<()> {
+    duct::cmd!(
+        &CONFIG.dict_tool,
+        "-q",
+        "set",
+        path,
+        format!("{key}={value}")
+    )
+    .run()?;
+
+    Ok(())
+}
+
+fn remove_entry(path: &Path, key: &str) -> Result<()> {
+    let exists = duct::cmd!(&CONFIG.dict_tool, "-q", "query", path, key)
+        .stdout_null()
+        .stderr_null()
+        .unchecked()
+        .run()?
+        .status
+        .success();
+
+    if exists {
+        duct::cmd!(&CONFIG.dict_tool, "-q", "remove", path, key).run()?;
     }
 
     Ok(())
@@ -122,19 +136,11 @@ mod tests {
             let vcpus = "4";
 
             // Seed entries
-            set_entries(
-                &vmx_path,
-                &[
-                    ("displayName", display_name.to_owned()),
-                    ("numvcpus", vcpus.to_owned()),
-                ],
-            )?;
+            set_entry(&vmx_path, "displayName", display_name)?;
+            set_entry(&vmx_path, "numvcpus", vcpus)?;
 
             // Set displayName again to verify that dictTool replaces the existing entry
-            set_entries(
-                &vmx_path,
-                &[("displayName", updated_display_name.to_owned())],
-            )?;
+            set_entry(&vmx_path, "displayName", updated_display_name)?;
 
             assert_vmx_entry(&vmx_path, "displayName", updated_display_name)?;
             assert_vmx_entry(&vmx_path, "numvcpus", vcpus)?;

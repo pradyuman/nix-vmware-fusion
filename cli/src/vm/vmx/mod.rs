@@ -26,7 +26,13 @@ pub(super) struct Snapshot {
 pub(super) struct Plan {
     pub snapshot: Snapshot,
     guest_os: String,
-    entries: Vec<(&'static str, String)>,
+    actions: Vec<Action>,
+}
+
+#[derive(Debug)]
+enum Action {
+    Set(&'static str, String),
+    Remove(&'static str),
 }
 
 // Stage

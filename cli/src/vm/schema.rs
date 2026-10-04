@@ -12,6 +12,7 @@ pub(super) struct VirtualMachine {
     #[serde(rename = "guestOS")]
     pub guest_os: String,
     pub vcpus: NonZeroU64,
+    pub cores_per_socket: Option<NonZeroU64>,
     pub memory: NonZeroU64,
     pub secure_boot: bool,
     #[serde(default)]

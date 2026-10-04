@@ -160,6 +160,16 @@ let
           description = "Number of virtual CPUs.";
         };
 
+        coresPerSocket = lib.mkOption {
+          type = lib.types.nullOr lib.types.ints.positive;
+          default = null;
+          example = 4;
+          description = ''
+            Number of virtual CPU cores per socket. When null, VMware chooses
+            the topology when the virtual machine powers on.
+          '';
+        };
+
         memory = lib.mkOption {
           type = lib.types.ints.positive;
           example = 8192;
@@ -213,11 +223,18 @@ in
     description = "VMware Fusion virtual machines managed by Home Manager.";
   };
 
-  config = lib.mkIf (cfg.enable && irFiles != { }) {
-    home.activation.vmwareFusionVirtualMachines = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-      ${lib.concatMapAttrsStringSep "\n" (
-        _: irFile: "run ${lib.getExe localPkgs.cli} vm apply ${lib.escapeShellArg irFile}"
-      ) irFiles}
-    '';
+  config = lib.mkIf cfg.enable {
+    assertions = lib.mapAttrsToList (name: vm: {
+      assertion = vm.coresPerSocket == null || lib.mod vm.vcpus vm.coresPerSocket == 0;
+      message = "programs.vmware-fusion.virtualMachines.${name}.coresPerSocket must evenly divide vcpus";
+    }) cfg.virtualMachines;
+
+    home.activation.vmwareFusionVirtualMachines = lib.mkIf (irFiles != { }) (
+      lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+        ${lib.concatMapAttrsStringSep "\n" (
+          _: irFile: "run ${lib.getExe localPkgs.cli} vm apply ${lib.escapeShellArg irFile}"
+        ) irFiles}
+      ''
+    );
   };
 }

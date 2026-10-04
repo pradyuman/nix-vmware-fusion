@@ -158,6 +158,7 @@ in
       path = "/Users/asuna/Virtual Machines.localized/asuna.vmwarevm";
       guestOS = "arm-other6xlinux-64";
       vcpus = 4;
+      coresPerSocket = null;
       memory = 8192;
       secureBoot = true;
       networkAdapters.primary = {
@@ -192,5 +193,20 @@ in
       lib.hasInfix "/bin/nix-vmware-fusion vm apply" virtualMachineActivation
       && lib.hasInfix "nix-vmware-fusion-asuna-ir.json" virtualMachineActivation;
     expected = true;
+  };
+
+  testInvalidCpuTopology = {
+    expr =
+      (mkHome {
+        enable = true;
+        virtualMachines.asuna = {
+          guestOS = "arm-other6xlinux-64";
+          vcpus = 6;
+          coresPerSocket = 4;
+          memory = 8192;
+          secureBoot = true;
+        };
+      }).config.home.activation.vmwareFusionVirtualMachines.data;
+    expectedError.type = "ThrownError";
   };
 }

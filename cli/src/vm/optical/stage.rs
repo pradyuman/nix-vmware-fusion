@@ -23,10 +23,7 @@ pub(crate) fn stage(draft_path: &Path, plan: Plan) -> Result<StagedChange> {
         Action::Configure { name, label, drive } => {
             enable_sata_controller(draft_path)?;
 
-            let label = match label {
-                Some(label) => label,
-                None => find_first_free_label(draft_path)?,
-            };
+            let label = label.map_or_else(|| find_first_free_label(draft_path), Ok)?;
 
             configure(draft_path, &label, &drive)?;
             state

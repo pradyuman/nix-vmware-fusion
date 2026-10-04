@@ -52,7 +52,7 @@ struct Plan {
 }
 
 fn plan(schema: &schema::VirtualMachine, snapshot: Snapshot) -> Result<Plan> {
-    let vmx = vmx::plan(schema, snapshot.vmx);
+    let vmx = vmx::plan(schema, snapshot.vmx)?;
     let network = network::plan(&schema.network_adapters, snapshot.network)?;
     let disk = disk::plan(&schema.disks, snapshot.disk)?;
     let shared_folder = shared_folder::plan(&schema.shared_folders, snapshot.shared_folder)?;
@@ -185,7 +185,9 @@ mod tests {
 
     use super::disk::BYTES_PER_GIB;
     use super::schema::VirtualMachine;
-    use super::test_support::{GUEST_OS, assert_vmx_entry, create_vmdk, create_vmx};
+    use super::test_support::{
+        GUEST_OS, assert_vmx_entry, assert_vmx_entry_absent, create_vmdk, create_vmx,
+    };
     use super::*;
 
     fn virtual_machine_ir(bundle_path: &Path, disk_path: &Path) -> serde_json::Value {
@@ -194,6 +196,7 @@ mod tests {
             "path": bundle_path,
             "guestOS": GUEST_OS,
             "vcpus": 4,
+            "coresPerSocket": 2,
             "memory": 4096,
             "secureBoot": true,
             "networkAdapters": {
@@ -247,6 +250,7 @@ mod tests {
         assert_vmx_entry(&vmx_path, "displayName", "Test VM")?;
         assert_vmx_entry(&vmx_path, "guestOS", GUEST_OS)?;
         assert_vmx_entry(&vmx_path, "numvcpus", "4")?;
+        assert_vmx_entry(&vmx_path, "cpuid.coresPerSocket", "2")?;
         assert_vmx_entry(&vmx_path, "memsize", "4096")?;
         assert_vmx_entry(&vmx_path, "uefi.secureBoot.enabled", "TRUE")?;
         assert_vmx_entry(&vmx_path, "firmware", "efi")?;
@@ -275,7 +279,7 @@ mod tests {
             Some(fs::canonicalize(&disk_path)?)
         );
 
-        // Reapplying the same IR should leave the VMX unchanged
+        // Reapplying automatic topology should leave the VMX unchanged
         let vmx_contents = fs::read_to_string(&vmx_path)?;
         apply(&ir_path)?;
         assert_eq!(fs::read_to_string(&vmx_path)?, vmx_contents);
@@ -307,6 +311,7 @@ mod tests {
 
         ir["displayName"] = serde_json::json!(display_name);
         ir["vcpus"] = serde_json::json!(vcpus);
+        ir["coresPerSocket"] = serde_json::Value::Null;
         ir["memory"] = serde_json::json!(memory);
         ir["secureBoot"] = serde_json::json!(secure_boot);
         ir["disks"]["primary"]["bus"] = serde_json::json!(bus);
@@ -317,6 +322,7 @@ mod tests {
 
         assert_vmx_entry(&vmx_path, "displayName", display_name)?;
         assert_vmx_entry(&vmx_path, "numvcpus", &vcpus.to_string())?;
+        assert_vmx_entry_absent(&vmx_path, "cpuid.coresPerSocket")?;
         assert_vmx_entry(&vmx_path, "memsize", &memory.to_string())?;
         assert_vmx_entry(
             &vmx_path,
@@ -333,6 +339,11 @@ mod tests {
             disk_attachments[0].canonical_path,
             Some(fs::canonicalize(&disk_path)?)
         );
+
+        // Reapplying the same IR should leave the VMX unchanged
+        let vmx_contents = fs::read_to_string(&vmx_path)?;
+        apply(&ir_path)?;
+        assert_eq!(fs::read_to_string(&vmx_path)?, vmx_contents);
 
         Ok(())
     }

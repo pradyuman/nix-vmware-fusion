@@ -176,6 +176,22 @@ from your configuration, the module stops managing it (but doesn't delete it).
 > configuration of a running virtual machine. Make sure to shut down any
 > virtual machines you're changing before activating a new configuration.
 
+### CPU topology
+
+By default, VMware Fusion chooses a socket topology for `vcpus` when the VM
+powers on. Set `coresPerSocket` to use a specific topology:
+
+```nix
+programs.vmware-fusion.virtualMachines.asuna = {
+  vcpus = 8;
+  coresPerSocket = 4; # 2 sockets with 4 cores each
+  # ...
+};
+```
+
+Removing `coresPerSocket` from your configuration restores VMware Fusion's
+default behavior.
+
 ### Network adapters
 
 Declare every virtual network adapter that should be attached to the VM:
