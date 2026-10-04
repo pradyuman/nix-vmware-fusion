@@ -1,14 +1,12 @@
 use std::collections::BTreeMap;
-use std::path::Path;
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
+use crate::config::CONFIG;
 use crate::state_file::PersistentState;
 
 use super::schema::VmnetName;
-
-const STATE_PATH: &str = "/Library/Application Support/nix-vmware-fusion/networks.json";
 
 pub(crate) type ManagedNetworks = BTreeMap<VmnetName, NetworkMetadata>;
 
@@ -28,10 +26,10 @@ impl PersistentState for State {
 
 impl State {
     pub(crate) fn load() -> Result<Self> {
-        Self::load_from(Path::new(STATE_PATH))
+        Self::load_from(&CONFIG.network_state)
     }
 
     pub(crate) fn save(&self) -> Result<()> {
-        self.save_to(Path::new(STATE_PATH))
+        self.save_to(&CONFIG.network_state)
     }
 }

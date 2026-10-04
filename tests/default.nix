@@ -14,7 +14,9 @@
 # The VMware test suite includes both contract tests that verify the CLI's
 # assumptions about individual VMware tools and virtual machine lifecycle tests
 # that apply new and updated configurations without booting a guest. It requires
-# Fusion and runs separately with `nix run .#vmware-tests`.
+# Fusion and runs separately with the following commands:
+# - `nix run .#vmware-tests`
+# - `sudo nix run .#vmware-privileged-tests`
 
 { inputs, ... }:
 
@@ -31,6 +33,16 @@
       };
       cliArtifacts = craneLib.buildDepsOnly cliArgs;
 
+      vmwareTestEnv = ''
+        export NIX_VMWARE_FUSION_DMG=/dev/null
+        export NIX_VMWARE_FUSION_DICT_TOOL=${pkgs.lib.getExe' localPkgs.commandLineTools "dictTool"}
+        export NIX_VMWARE_FUSION_QEMU_IMG=${pkgs.lib.getExe' pkgs.qemu-utils "qemu-img"}
+        export NIX_VMWARE_FUSION_VDISK_MANAGER=${pkgs.lib.getExe' localPkgs.commandLineTools "vmware-vdiskmanager"}
+        export NIX_VMWARE_FUSION_VMCLI=${pkgs.lib.getExe' localPkgs.commandLineTools "vmcli"}
+        export NIX_VMWARE_FUSION_VMNET_CFGCLI=${pkgs.lib.getExe' localPkgs.commandLineTools "vmnet-cfgcli"}
+        export NIX_VMWARE_FUSION_VMNET_CLI=${pkgs.lib.getExe' localPkgs.commandLineTools "vmnet-cli"}
+      '';
+
       vmwareTests = pkgs.writeShellApplication {
         name = "nix-vmware-fusion-vmware-tests";
         runtimeInputs = [
@@ -38,15 +50,27 @@
           pkgs.rustc
         ];
         text = ''
-          export NIX_VMWARE_FUSION_DMG=/dev/null
-          export NIX_VMWARE_FUSION_DICT_TOOL=${pkgs.lib.getExe' localPkgs.commandLineTools "dictTool"}
-          export NIX_VMWARE_FUSION_QEMU_IMG=${pkgs.lib.getExe' pkgs.qemu-utils "qemu-img"}
-          export NIX_VMWARE_FUSION_VDISK_MANAGER=${pkgs.lib.getExe' localPkgs.commandLineTools "vmware-vdiskmanager"}
-          export NIX_VMWARE_FUSION_VMCLI=${pkgs.lib.getExe' localPkgs.commandLineTools "vmcli"}
-          export NIX_VMWARE_FUSION_VMNET_CFGCLI=${pkgs.lib.getExe' localPkgs.commandLineTools "vmnet-cfgcli"}
-          export NIX_VMWARE_FUSION_VMNET_CLI=${pkgs.lib.getExe' localPkgs.commandLineTools "vmnet-cli"}
+          ${vmwareTestEnv}
 
           exec cargo test --locked --manifest-path cli/Cargo.toml --features vmware-tests "$@"
+        '';
+      };
+
+      vmwarePrivilegedTests = pkgs.writeShellApplication {
+        name = "nix-vmware-fusion-vmware-privileged-tests";
+        runtimeInputs = [
+          pkgs.cargo
+          pkgs.rustc
+        ];
+        text = ''
+          ${vmwareTestEnv}
+
+          exec cargo test \
+            --locked \
+            --manifest-path cli/Cargo.toml \
+            --features vmware-privileged-tests \
+            --test network \
+            "$@"
         '';
       };
     in
@@ -93,6 +117,11 @@
       apps.vmware-tests = {
         type = "app";
         program = pkgs.lib.getExe vmwareTests;
+      };
+
+      apps.vmware-privileged-tests = {
+        type = "app";
+        program = pkgs.lib.getExe vmwarePrivilegedTests;
       };
     };
 }

@@ -5,6 +5,7 @@ edition = "2024"
 
 [features]
 vmware-tests = []
+vmware-privileged-tests = []
 
 [dependencies]
 anyhow = "1.0.104"

@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 use std::net::Ipv4Addr;
 
+use anyhow::{Result, ensure};
 use nutype::nutype;
 use serde::Deserialize;
 
@@ -41,11 +42,40 @@ pub(crate) struct Subnet {
     pub prefix_length: Ipv4PrefixLength,
 }
 
+impl Subnet {
+    pub(crate) fn netmask(&self) -> Result<Ipv4Addr> {
+        let netmask = self.prefix_length.netmask();
+        let address = u32::from(self.address);
+
+        // A network address cannot have host bits set outside its prefix
+        ensure!(
+            address & u32::from(netmask) == address,
+            "{} is not a /{} network address",
+            self.address,
+            u8::from(self.prefix_length)
+        );
+
+        Ok(netmask)
+    }
+}
+
 #[nutype(
     validate(less_or_equal = 32),
     derive(Clone, Copy, Debug, Deserialize, Into)
 )]
 pub(crate) struct Ipv4PrefixLength(u8);
+
+impl Ipv4PrefixLength {
+    fn netmask(self) -> Ipv4Addr {
+        let prefix_length = u8::from(self);
+
+        // A /0 prefix's shift by 32 returns None, so it unwraps to a zero mask
+        u32::MAX
+            .checked_shl(32 - u32::from(prefix_length))
+            .unwrap_or(0)
+            .into()
+    }
+}
 
 #[derive(Debug, Deserialize)]
 pub(crate) struct Toggle {

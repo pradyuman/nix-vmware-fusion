@@ -16,8 +16,12 @@ pub(super) fn inspect() -> Result<Snapshot> {
 }
 
 fn read_answers(path: &Path) -> Result<NetworkAnswers> {
-    let contents = fs::read_to_string(path)
-        .with_context(|| format!("could not read VMware networking state {}", path.display()))?;
+    let contents = fs::read_to_string(path).with_context(|| {
+        format!(
+            "could not read VMware Fusion networking file {}",
+            path.display()
+        )
+    })?;
 
     Ok(contents
         .lines()

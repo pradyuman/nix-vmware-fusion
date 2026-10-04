@@ -4,9 +4,14 @@ use std::fs;
 
 use anyhow::Result;
 
-use support::CONFIG;
+use support::config;
 
 mod support;
+
+config! {
+    cli,
+    dict_tool,
+}
 
 #[test]
 fn cli_applies_virtual_machine_configuration() -> Result<()> {

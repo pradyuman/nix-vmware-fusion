@@ -26,17 +26,25 @@ pub(crate) trait PersistentState:
                 return Ok(Self::default());
             }
             Err(error) => {
-                return Err(error)
-                    .with_context(|| format!("could not read state from {}", path.display()));
+                return Err(error).with_context(|| {
+                    format!(
+                        "could not read nix-vmware-fusion state file {}",
+                        path.display()
+                    )
+                });
             }
         };
 
-        let state_file = serde_json::from_str::<StateFile<Self>>(&contents)
-            .with_context(|| format!("could not parse state from {}", path.display()))?;
+        let state_file = serde_json::from_str::<StateFile<Self>>(&contents).with_context(|| {
+            format!(
+                "could not parse nix-vmware-fusion state file {}",
+                path.display()
+            )
+        })?;
 
         ensure!(
             state_file.format_version == Self::FORMAT_VERSION,
-            "unsupported state format version {} in {}",
+            "unsupported nix-vmware-fusion state format version {} in {}",
             state_file.format_version,
             path.display()
         );
@@ -51,22 +59,37 @@ pub(crate) trait PersistentState:
 
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent).with_context(|| {
-                format!("could not create state directory {}", parent.display())
+                format!(
+                    "could not create nix-vmware-fusion state directory {}",
+                    parent.display()
+                )
             })?;
         }
 
-        let mut file = AtomicWriteFile::open(path)
-            .with_context(|| format!("could not open state file {}", path.display()))?;
+        let mut file = AtomicWriteFile::open(path).with_context(|| {
+            format!(
+                "could not open nix-vmware-fusion state file {}",
+                path.display()
+            )
+        })?;
 
         let state_file = StateFile {
             format_version: Self::FORMAT_VERSION,
             state: self,
         };
-        serde_json::to_writer_pretty(&mut file, &state_file)
-            .with_context(|| format!("could not serialize state to {}", path.display()))?;
+        serde_json::to_writer_pretty(&mut file, &state_file).with_context(|| {
+            format!(
+                "could not serialize nix-vmware-fusion state to {}",
+                path.display()
+            )
+        })?;
         file.write_all(b"\n")?;
-        file.commit()
-            .with_context(|| format!("could not save state to {}", path.display()))?;
+        file.commit().with_context(|| {
+            format!(
+                "could not save nix-vmware-fusion state file {}",
+                path.display()
+            )
+        })?;
 
         Ok(())
     }
@@ -108,7 +131,7 @@ mod tests {
         assert!(
             error
                 .to_string()
-                .contains("unsupported state format version 2")
+                .contains("unsupported nix-vmware-fusion state format version 2")
         );
 
         Ok(())

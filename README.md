@@ -68,9 +68,10 @@ the system profile:
 - VMware Fusion's bundled command-line tools, including `vmrun`, `vmcli`,
   `vmrest`, `vmnet-cli`, and `ovftool`
 
-To manage VMware Fusion's networks, set:
+To manage VMware Fusion's system-wide networks, set:
 
 ```nix
+# vmnet8 is VMware Fusion's default NAT network.
 programs.vmware-fusion.networking.networks.vmnet8 = {
   subnet = {
     address = "192.168.200.0";
@@ -84,11 +85,6 @@ programs.vmware-fusion.networking.networks.vmnet8 = {
 
 The module only adds, updates, or removes networks it manages or has previously
 managed.
-
-> [!IMPORTANT]
-> `nix-vmware-fusion` will return an error if you try to update networking
-> settings while any virtual machines are running. Make sure to shut down all
-> virtual machines before activating a networking change.
 
 #### Directly
 

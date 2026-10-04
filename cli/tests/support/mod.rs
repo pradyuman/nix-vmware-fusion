@@ -1,24 +1,21 @@
-use std::path::PathBuf;
-use std::sync::LazyLock;
+macro_rules! config {
+    ($($field:ident),+ $(,)?) => {
+        #[derive(serde::Deserialize)]
+        struct Config {
+            $(
+                $field: std::path::PathBuf,
+            )+
+        }
 
-use anyhow::Result;
-use serde::Deserialize;
-
-pub(crate) static CONFIG: LazyLock<Config> =
-    LazyLock::new(|| Config::load().expect("could not load test configuration"));
-
-#[derive(Debug, Deserialize)]
-pub(crate) struct Config {
-    pub cli: PathBuf,
-    pub dict_tool: PathBuf,
+        static CONFIG: std::sync::LazyLock<Config> = std::sync::LazyLock::new(|| {
+            ::config::Config::builder()
+                .add_source(::config::Environment::with_prefix("NIX_VMWARE_FUSION"))
+                .set_override("cli", env!("CARGO_BIN_EXE_nix-vmware-fusion"))
+                .and_then(|builder| builder.build())
+                .and_then(|config| config.try_deserialize())
+                .expect("could not load test configuration")
+        });
+    };
 }
 
-impl Config {
-    fn load() -> Result<Self> {
-        Ok(config::Config::builder()
-            .add_source(config::Environment::with_prefix("NIX_VMWARE_FUSION"))
-            .set_override("cli", env!("CARGO_BIN_EXE_nix-vmware-fusion"))?
-            .build()?
-            .try_deserialize()?)
-    }
-}
+pub(super) use config;

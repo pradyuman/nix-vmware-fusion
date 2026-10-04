@@ -13,8 +13,6 @@ pub(super) fn commit(plan: Plan) -> Result<()> {
         return state.save();
     }
 
-    ensure_stopped()?;
-
     println!("Updating VMware Fusion's networking configuration...");
     run_vmnet_cli("--stop")?;
 
@@ -38,22 +36,6 @@ fn run_vmnet_cli(argument: &str) -> Result<()> {
         .with_context(|| format!("could not run vmnet-cli {argument}"))?;
 
     Ok(())
-}
-
-fn ensure_stopped() -> Result<()> {
-    let output = duct::cmd!("/usr/bin/pgrep", "-x", "vmware-vmx")
-        .unchecked()
-        .run()
-        .context("could not check for running VMware Fusion virtual machines")?;
-
-    match output.status.code() {
-        Some(0) => bail!(
-            "a VMware Fusion virtual machine is running. Shut it down before updating networking."
-        ),
-        Some(1) => Ok(()),
-        Some(code) => bail!("pgrep failed with status {code}"),
-        None => bail!("pgrep was terminated by a signal"),
-    }
 }
 
 fn apply_action(action: Action) -> Result<()> {

@@ -48,3 +48,10 @@ jobs:
 
       - name: Run VMware tests
         run: nix run .#vmware-tests
+
+      - name: Run VMware privileged tests
+        run: |
+          services="/Applications/VMware Fusion.app/Contents/Library/services/Open VMware Fusion Services"
+          sudo "$services" >/dev/null 2>&1 &
+
+          sudo nix run .#vmware-privileged-tests

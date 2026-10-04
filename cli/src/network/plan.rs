@@ -1,8 +1,6 @@
-use std::net::Ipv4Addr;
+use anyhow::Result;
 
-use anyhow::{Result, ensure};
-
-use super::schema::{Network, Networks, Subnet, VmnetName};
+use super::schema::{Network, Networks, VmnetName};
 use super::state::{NetworkMetadata, State};
 use super::{Action, NetworkAnswers, Plan, Snapshot, yes_no};
 
@@ -44,7 +42,7 @@ fn plan_network(
     answers: &NetworkAnswers,
 ) -> Result<Vec<Action>> {
     let prefix = format!("VNET_{}_", name.number());
-    let subnet_mask = subnet_mask(&network.subnet)?;
+    let subnet_mask = network.subnet.netmask()?;
 
     let exists = network_exists(name, answers);
     let addition = (!exists).then(|| Action::AddNetwork(name.clone()));
@@ -89,29 +87,12 @@ fn network_exists(name: &VmnetName, answers: &NetworkAnswers) -> bool {
     answers.contains_key(&format!("VNET_{}_HOSTONLY_SUBNET", name.number()))
 }
 
-fn subnet_mask(subnet: &Subnet) -> Result<Ipv4Addr> {
-    let prefix_length: u8 = subnet.prefix_length.into();
-
-    // A /0 prefix's shift by 32 returns None, so it unwraps to a zero mask
-    let mask = u32::MAX
-        .checked_shl(32 - u32::from(prefix_length))
-        .unwrap_or(0);
-    let address = u32::from(subnet.address);
-
-    ensure!(
-        address & mask == address,
-        "{} is not a /{} network address",
-        subnet.address,
-        prefix_length
-    );
-
-    Ok(mask.into())
-}
-
 #[cfg(test)]
 mod tests {
+    use std::net::Ipv4Addr;
+
     use super::*;
-    use crate::network::schema::{Ipv4PrefixLength, Toggle, VmnetName};
+    use crate::network::schema::{Ipv4PrefixLength, Subnet, Toggle, VmnetName};
     use crate::network::state::ManagedNetworks;
 
     const NETWORK_ADDRESS: Ipv4Addr = Ipv4Addr::new(192, 0, 2, 0);
