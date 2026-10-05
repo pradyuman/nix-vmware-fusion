@@ -78,8 +78,7 @@ mod tests {
     fn image_drive(path: &str) -> OpticalDrive {
         OpticalDrive {
             source: OpticalDriveSource::Image {
-                path: OpticalImagePath::try_new(PathBuf::from(path))
-                    .expect("valid optical image path"),
+                path: OpticalImagePath::try_new(PathBuf::from(path)).unwrap(),
             },
             start_connected: true,
         }

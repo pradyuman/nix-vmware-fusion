@@ -100,14 +100,14 @@ mod tests {
     const SUBNET_MASK: Ipv4Addr = Ipv4Addr::new(255, 255, 255, 0);
 
     fn vmnet_name(name: &str) -> VmnetName {
-        VmnetName::try_new(name.to_owned()).expect("valid VMware network name")
+        VmnetName::try_new(name.to_owned()).unwrap()
     }
 
     fn network() -> Network {
         Network {
             subnet: Subnet {
                 address: NETWORK_ADDRESS,
-                prefix_length: Ipv4PrefixLength::try_new(24).expect("valid IPv4 prefix length"),
+                prefix_length: Ipv4PrefixLength::try_new(24).unwrap(),
             },
             dhcp: Toggle { enable: true },
             nat: Toggle { enable: false },

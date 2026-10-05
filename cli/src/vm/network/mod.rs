@@ -23,9 +23,9 @@ pub(super) struct NetworkAttachment {
     pub label: NetworkAdapterLabel,
     pub external_id: String,
     pub mode: String,
-    pub vmnet: String,
-    pub model: String,
-    pub start_connected: bool,
+    vmnet: String,
+    model: String,
+    start_connected: bool,
 }
 
 // Plan

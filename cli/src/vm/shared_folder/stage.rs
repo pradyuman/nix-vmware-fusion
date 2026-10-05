@@ -83,8 +83,7 @@ mod tests {
                     label: label.to_owned(),
                     name: name.to_owned(),
                     folder: SharedFolder {
-                        host_path: SharedFolderPath::try_new(projects_path.clone())
-                            .expect("valid shared folder path"),
+                        host_path: SharedFolderPath::try_new(projects_path.clone()).unwrap(),
                         read_only: false,
                     },
                 }],
@@ -111,8 +110,7 @@ mod tests {
                     label: label.to_owned(),
                     name: name.to_owned(),
                     folder: SharedFolder {
-                        host_path: SharedFolderPath::try_new(downloads_path.clone())
-                            .expect("valid shared folder path"),
+                        host_path: SharedFolderPath::try_new(downloads_path.clone()).unwrap(),
                         read_only: true,
                     },
                 }],

@@ -156,8 +156,7 @@ mod tests {
                 assert_eq!(
                     read_state(&path)?,
                     DiskState {
-                        capacity_bytes: std::num::NonZeroU64::new(1024_u64.pow(2))
-                            .expect("non-zero disk capacity"),
+                        capacity_bytes: std::num::NonZeroU64::new(1024_u64.pow(2)).unwrap(),
                         format: expected_format,
                     }
                 );

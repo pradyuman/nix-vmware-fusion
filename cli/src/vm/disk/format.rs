@@ -1,7 +1,7 @@
 use std::fmt;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub(crate) enum DiskFormat {
+pub(super) enum DiskFormat {
     Sparse,
     SplitSparse,
     Preallocated,

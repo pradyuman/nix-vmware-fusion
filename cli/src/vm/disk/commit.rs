@@ -186,7 +186,7 @@ mod tests {
         let temp_dir = tempfile::tempdir()?;
         let bundle_path = temp_dir.path().join("test.vmwarevm");
         let disk_path = bundle_path.join("managed.vmdk");
-        let size = NonZeroU64::new(1).expect("non-zero disk capacity");
+        let size = NonZeroU64::new(1).unwrap();
         let format = DiskFormat::SplitSparse;
 
         assert!(!bundle_path.try_exists()?);
@@ -204,7 +204,7 @@ mod tests {
     fn vmware_tools_expand_disk_capacity() -> Result<()> {
         let temp_dir = tempfile::tempdir()?;
         let disk_path = temp_dir.path().join("managed.vmdk");
-        let expanded_size = NonZeroU64::new(1).expect("non-zero disk capacity");
+        let expanded_size = NonZeroU64::new(1).unwrap();
 
         create_vmdk(&disk_path, "10MB")?;
 

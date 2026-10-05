@@ -7,7 +7,7 @@ use crate::vm::schema::DiskBus;
 mod commit;
 
 mod format;
-pub(super) use format::DiskFormat;
+use format::DiskFormat;
 
 mod inspect;
 pub(super) use inspect::inspect;
@@ -24,7 +24,7 @@ pub(super) const BYTES_PER_GIB: u64 = 1024_u64.pow(3);
 pub(super) struct DiskLabel(String);
 
 impl DiskLabel {
-    pub(super) fn bus(&self) -> Option<DiskBus> {
+    fn bus(&self) -> Option<DiskBus> {
         if self.as_ref().starts_with("nvme") {
             Some(DiskBus::Nvme)
         } else if self.as_ref().starts_with("sata") {
@@ -45,15 +45,15 @@ pub(super) struct Snapshot {
 
 #[derive(Debug)]
 pub(super) struct DiskImage {
-    pub path: PathBuf,
-    pub canonical_path: PathBuf,
     pub state: DiskState,
+    path: PathBuf,
+    canonical_path: PathBuf,
 }
 
 #[derive(Debug, PartialEq)]
 pub(super) struct DiskState {
     pub capacity_bytes: NonZeroU64,
-    pub format: DiskFormat,
+    format: DiskFormat,
 }
 
 #[derive(Debug)]
@@ -66,11 +66,11 @@ pub(super) struct DiskAttachment {
 
 #[derive(Debug)]
 pub(super) struct Plan {
-    pub actions: Vec<Action>,
+    actions: Vec<Action>,
 }
 
 #[derive(Debug)]
-pub(super) enum Action {
+enum Action {
     Create {
         path: PathBuf,
         size: NonZeroU64,

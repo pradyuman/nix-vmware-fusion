@@ -139,8 +139,7 @@ mod tests {
         SharedFolders::from([(
             name.to_owned(),
             SharedFolder {
-                host_path: SharedFolderPath::try_new(PathBuf::from(path))
-                    .expect("valid shared folder path"),
+                host_path: SharedFolderPath::try_new(PathBuf::from(path)).unwrap(),
                 read_only,
             },
         )])

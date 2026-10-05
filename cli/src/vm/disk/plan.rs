@@ -159,8 +159,8 @@ mod tests {
 
     fn configured_disk(path: &Path, bus: DiskBus) -> VirtualDisk {
         VirtualDisk {
-            path: DiskPath::try_new(path.to_owned()).expect("valid disk path"),
-            size: NonZeroU64::new(8).expect("non-zero disk capacity"),
+            path: DiskPath::try_new(path.to_owned()).unwrap(),
+            size: NonZeroU64::new(8).unwrap(),
             bus,
             preallocate: false,
             split: false,
@@ -172,8 +172,7 @@ mod tests {
             path: path.to_owned(),
             canonical_path: path.to_owned(),
             state: DiskState {
-                capacity_bytes: NonZeroU64::new(8 * BYTES_PER_GIB)
-                    .expect("non-zero current disk capacity"),
+                capacity_bytes: NonZeroU64::new(8 * BYTES_PER_GIB).unwrap(),
                 format: DiskFormat::Sparse,
             },
         }
@@ -406,8 +405,7 @@ mod tests {
     fn smaller_disk_is_expanded_to_configured_capacity() -> Result<()> {
         let disk_path = Path::new("/disks/system.vmdk");
         let mut configured = configured_disks(disk_path, DiskBus::Nvme);
-        configured.get_mut("primary").expect("configured disk").size =
-            NonZeroU64::new(16).expect("non-zero disk capacity");
+        configured.get_mut("primary").expect("configured disk").size = NonZeroU64::new(16).unwrap();
         let snapshot = Snapshot {
             disk_images: vec![disk_image_with_capacity(disk_path, 8 * BYTES_PER_GIB)],
             disk_attachments: vec![disk_attachment(disk_path, "nvme0:0")],

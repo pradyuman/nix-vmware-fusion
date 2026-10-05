@@ -11,35 +11,35 @@ pub(super) use stage::stage;
 
 use crate::vm::schema::SharedFolder;
 
-pub(super) type SharedFolderLabel = String;
+type SharedFolderLabel = String;
 
 // Inspect
 
 #[derive(Debug)]
 pub(super) struct Snapshot {
-    pub shared_folders: Vec<ObservedSharedFolder>,
+    shared_folders: Vec<ObservedSharedFolder>,
 }
 
 #[derive(Debug)]
-pub(super) struct ObservedSharedFolder {
-    pub label: SharedFolderLabel,
-    pub guest_name: String,
-    pub host_path: PathBuf,
-    pub present: bool,
-    pub enabled: bool,
-    pub read_access: bool,
-    pub write_access: bool,
+struct ObservedSharedFolder {
+    label: SharedFolderLabel,
+    guest_name: String,
+    host_path: PathBuf,
+    present: bool,
+    enabled: bool,
+    read_access: bool,
+    write_access: bool,
 }
 
 // Plan
 
 #[derive(Debug)]
 pub(super) struct Plan {
-    pub actions: Vec<Action>,
+    actions: Vec<Action>,
 }
 
 #[derive(Debug)]
-pub(super) enum Action {
+enum Action {
     Configure {
         label: SharedFolderLabel,
         name: String,

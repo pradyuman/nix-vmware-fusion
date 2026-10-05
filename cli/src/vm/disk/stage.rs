@@ -133,7 +133,7 @@ mod tests {
     #[test]
     fn disk_changes_are_staged_for_commit() -> Result<()> {
         let disk_path = Path::new("/disks/system.vmdk");
-        let size = NonZeroU64::new(12).expect("non-zero disk capacity");
+        let size = NonZeroU64::new(12).unwrap();
         let format = DiskFormat::SplitSparse;
 
         let plan = Plan {

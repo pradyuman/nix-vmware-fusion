@@ -28,22 +28,22 @@ pub(super) struct Snapshot {
 #[derive(Debug)]
 pub(super) struct OpticalAttachment {
     pub label: OpticalDriveLabel,
-    pub backing_type: Option<String>,
     pub backing_path: Option<PathBuf>,
-    pub client_device: bool,
     pub start_connected: bool,
+    backing_type: Option<String>,
+    client_device: bool,
 }
 
 // Plan
 
 #[derive(Debug)]
 pub(super) struct Plan {
-    pub state: State,
-    pub actions: Vec<Action>,
+    state: State,
+    actions: Vec<Action>,
 }
 
 #[derive(Debug)]
-pub(super) enum Action {
+enum Action {
     Configure {
         name: String,
         label: Option<OpticalDriveLabel>,

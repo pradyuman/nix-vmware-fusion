@@ -138,8 +138,7 @@ mod tests {
                     label: None,
                     drive: OpticalDrive {
                         source: OpticalDriveSource::Image {
-                            path: OpticalImagePath::try_new(image_path.clone())
-                                .expect("valid optical image path"),
+                            path: OpticalImagePath::try_new(image_path.clone()).unwrap(),
                         },
                         start_connected: false,
                     },
