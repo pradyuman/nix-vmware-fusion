@@ -115,6 +115,8 @@ To manage user preferences, use the Home Manager module:
         singleWindowFit = "resize";
         fullScreenFit = "resize";
       };
+
+      # Passed through as a raw VMware preference.
       mapISONumpadEnterToAltGrEnabled = false;
     };
   };
@@ -123,16 +125,16 @@ To manage user preferences, use the Home Manager module:
 
 The module supports these settings:
 
-| Setting                      | Values                              | Description                                                    |
-| ---------------------------- | ----------------------------------- | -------------------------------------------------------------- |
-| `appearance`                 | `"auto"`, `"light"`, `"dark"`       | VMware Fusion's appearance.                                    |
-| `closeAction`                | `"suspend"`, `"power-off"`          | Action to take when closing a virtual machine window.          |
-| `confirmBeforeClosing`       | `true`, `false`                     | Whether to confirm before closing a virtual machine or Fusion. |
-| `dataCollectionEnabled`      | `true`, `false`                     | Whether to participate in VMware's data collection program.    |
-| `display.singleWindowFit`    | `"stretch"`, `"resize"`             | How to size the virtual machine display in single-window mode. |
-| `display.fullScreenFit`      | `"center"`, `"stretch"`, `"resize"` | How to size the virtual machine display in full-screen mode.   |
-| `gamingMouseMode`            | `"auto"`, `"never"`, `"always"`     | When to optimize the mouse for games.                          |
-| `perVirtualMachineShortcuts` | `true`, `false`                     | Whether to enable per-virtual machine keyboard shortcuts.      |
+| Setting                         | Values                              | Description                                                    |
+| ------------------------------- | ----------------------------------- | -------------------------------------------------------------- |
+| `appearance`                    | `"auto"`, `"light"`, `"dark"`       | VMware Fusion's appearance.                                    |
+| `closeAction`                   | `"suspend"`, `"power-off"`          | Action to take when closing a virtual machine window.          |
+| `confirmBeforeClosing`          | `true`, `false`                     | Whether to confirm before closing a virtual machine or Fusion. |
+| `gamingMouseMode`               | `"auto"`, `"never"`, `"always"`     | When to optimize the mouse for games.                          |
+| `dataCollectionEnabled`         | `true`, `false`                     | Whether to participate in VMware's data collection program.    |
+| `perVmKeyboardShortcutsEnabled` | `true`, `false`                     | Whether to enable per-virtual machine keyboard shortcuts.      |
+| `display.singleWindowFit`       | `"stretch"`, `"resize"`             | How to size the virtual machine display in single-window mode. |
+| `display.fullScreenFit`         | `"center"`, `"stretch"`, `"resize"` | How to size the virtual machine display in full-screen mode.   |
 
 To manage a setting that is not listed above, add its VMware preference key to
 `settings` without the `pref.` prefix. Settings you do not specify are left

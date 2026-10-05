@@ -78,10 +78,40 @@ in
     write = writePreference "pref.vmplayer.confirmOnExit" (value: value);
   };
 
+  gamingMouseMode = {
+    type = "enum";
+    values = [
+      "auto"
+      "never"
+      "always"
+    ];
+    description = "When to optimize the mouse for games.";
+    write =
+      value:
+      if value == "auto" then
+        {
+          removePreferences = [ "pref.gamingMouseMode" ];
+        }
+      else
+        writePreference "pref.gamingMouseMode" (
+          mode:
+          builtins.getAttr mode {
+            never = "absoluteMouse";
+            always = "relativeMouse";
+          }
+        ) value;
+  };
+
   dataCollectionEnabled = {
     type = "bool";
     description = "Whether to participate in VMware's Customer Experience Improvement Program.";
     write = writePreference "pref.dataCollectionEnabled" (value: value);
+  };
+
+  perVmKeyboardShortcutsEnabled = {
+    type = "bool";
+    description = "Whether to enable per-virtual machine keyboard shortcuts.";
+    write = writePreference "pref.keyboardAndMouse.vmHotKey.enabled" (value: value);
   };
 
   display = {
@@ -117,36 +147,6 @@ in
         }
       );
     };
-  };
-
-  gamingMouseMode = {
-    type = "enum";
-    values = [
-      "auto"
-      "never"
-      "always"
-    ];
-    description = "When to optimize the mouse for games.";
-    write =
-      value:
-      if value == "auto" then
-        {
-          removePreferences = [ "pref.gamingMouseMode" ];
-        }
-      else
-        writePreference "pref.gamingMouseMode" (
-          mode:
-          builtins.getAttr mode {
-            never = "absoluteMouse";
-            always = "relativeMouse";
-          }
-        ) value;
-  };
-
-  perVirtualMachineShortcuts = {
-    type = "bool";
-    description = "Whether to enable per-virtual machine keyboard shortcuts.";
-    write = writePreference "pref.keyboardAndMouse.vmHotKey.enabled" (value: value);
   };
 
 }

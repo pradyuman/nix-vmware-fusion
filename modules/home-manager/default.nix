@@ -11,7 +11,7 @@ in
 {
   imports = [
     ./settings
-    ./virtual-machines.nix
+    ./virtual-machines
   ];
 
   options.programs.vmware-fusion.enable = lib.mkEnableOption "VMware Fusion";

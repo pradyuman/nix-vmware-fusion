@@ -45,14 +45,14 @@ let
       boolean = false;
       closeAction = "power-off";
       confirmBeforeClosing = true;
+      gamingMouseMode = "never";
       dataCollectionEnabled = false;
+      perVmKeyboardShortcutsEnabled = true;
       display = {
         singleWindowFit = "stretch";
         fullScreenFit = "stretch";
       };
-      gamingMouseMode = "never";
       integer = 42;
-      perVirtualMachineShortcuts = true;
       string = "hello world";
     };
   };
