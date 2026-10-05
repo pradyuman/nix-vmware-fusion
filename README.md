@@ -287,6 +287,29 @@ Each shared folder supports the following settings:
 The attribute name (`projects` above) becomes the shared folder name reported
 to the guest.
 
+### Sound card
+
+Attach a VMware HD Audio sound card to the VM:
+
+```nix
+programs.vmware-fusion.virtualMachines.asuna = {
+  # ...
+  sound = {
+    startConnected = true;
+    echoCancellation = false;
+  };
+};
+```
+
+The sound card uses the host's default audio input and output devices.
+
+| Setting            | Type    | Default | Description                                                       |
+| ------------------ | ------- | ------- | ----------------------------------------------------------------- |
+| `startConnected`   | Boolean | `true`  | Whether to connect the sound card when the virtual machine starts |
+| `echoCancellation` | Boolean | `false` | Whether to enable echo cancellation                               |
+
+Removing `sound` from the configuration removes the sound card from the VM.
+
 ### Optical drives
 
 Attach an ISO image to the VM with a virtual optical drive:

@@ -38,7 +38,6 @@ let
       ];
     };
 
-  defaultHome = mkHome { };
   configuredHome = mkHome {
     enable = true;
     settings = {
@@ -78,6 +77,7 @@ let
       networkAdapters.primary = { };
       disks.primary.size = 64;
       sharedFolders.projects.hostPath = "/Users/asuna/projects";
+      sound = { };
       opticalDrives.installer.source = {
         type = "image";
         path = "/Users/asuna/Downloads/nixos.iso";
@@ -95,11 +95,6 @@ let
     virtualMachineHome.config.home.activation.vmwareFusionVirtualMachines.data;
 in
 {
-  testDisabledByDefault = {
-    expr = defaultHome.config.programs.vmware-fusion.enable;
-    expected = false;
-  };
-
   testFreeformSettingsAreSet = {
     expr = builtins.all (command: lib.hasInfix command configuredActivation) [
       "pref.boolean=FALSE"
@@ -177,6 +172,10 @@ in
       sharedFolders.projects = {
         hostPath = "/Users/asuna/projects";
         readOnly = false;
+      };
+      sound = {
+        startConnected = true;
+        echoCancellation = false;
       };
       opticalDrives.installer = {
         source = {

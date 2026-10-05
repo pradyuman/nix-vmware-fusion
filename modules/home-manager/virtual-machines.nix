@@ -104,6 +104,22 @@ let
     };
   };
 
+  soundCardType = lib.types.submodule {
+    options = {
+      startConnected = lib.mkOption {
+        type = lib.types.bool;
+        default = true;
+        description = "Whether to connect the sound card when the virtual machine starts.";
+      };
+
+      echoCancellation = lib.mkOption {
+        type = lib.types.bool;
+        default = false;
+        description = "Whether to enable echo cancellation.";
+      };
+    };
+  };
+
   opticalDriveType = lib.types.submodule {
     options = {
       source = lib.mkOption {
@@ -197,6 +213,12 @@ let
           type = lib.types.attrsOf sharedFolderType;
           default = { };
           description = "Host directories shared with the VM. Undeclared shared folders are removed.";
+        };
+
+        sound = lib.mkOption {
+          type = lib.types.nullOr soundCardType;
+          default = null;
+          description = "VMware HD Audio sound card attached to the VM.";
         };
 
         opticalDrives = lib.mkOption {

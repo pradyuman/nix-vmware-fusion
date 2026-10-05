@@ -29,7 +29,7 @@ pub(super) struct Plan {
     actions: Vec<Action>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 enum Action {
     Set(&'static str, String),
     Remove(&'static str),

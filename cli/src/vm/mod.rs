@@ -279,7 +279,7 @@ mod tests {
             Some(fs::canonicalize(&disk_path)?)
         );
 
-        // Reapplying automatic topology should leave the VMX unchanged
+        // Reapplying the same IR should leave the VMX unchanged
         let vmx_contents = fs::read_to_string(&vmx_path)?;
         apply(&ir_path)?;
         assert_eq!(fs::read_to_string(&vmx_path)?, vmx_contents);
@@ -340,7 +340,69 @@ mod tests {
             Some(fs::canonicalize(&disk_path)?)
         );
 
-        // Reapplying the same IR should leave the VMX unchanged
+        // Reapplying automatic topology should leave the VMX unchanged
+        let vmx_contents = fs::read_to_string(&vmx_path)?;
+        apply(&ir_path)?;
+        assert_eq!(fs::read_to_string(&vmx_path)?, vmx_contents);
+
+        Ok(())
+    }
+
+    #[test]
+    fn manages_sound_card() -> Result<()> {
+        let temp_dir = tempfile::tempdir()?;
+        let bundle_path = temp_dir.path().join("test.vmwarevm");
+        let vmx_path = bundle_path.join("test.vmx");
+        let disk_path = temp_dir.path().join("managed.vmdk");
+        let ir_path = temp_dir.path().join("virtual-machine-ir.json");
+
+        let mut ir = virtual_machine_ir(&bundle_path, &disk_path);
+        ir["sound"] = serde_json::json!({});
+
+        write_ir_file(&ir_path, &ir)?;
+        apply(&ir_path)?;
+
+        assert_vmx_entry(&vmx_path, "sound.present", "TRUE")?;
+        assert_vmx_entry(&vmx_path, "sound.virtualDev", "hdaudio")?;
+        assert_vmx_entry(&vmx_path, "sound.autoDetect", "TRUE")?;
+        assert_vmx_entry(&vmx_path, "sound.fileName", "-1")?;
+        assert_vmx_entry_absent(&vmx_path, "sound.startConnected")?;
+        assert_vmx_entry_absent(&vmx_path, "sound.enableAEC")?;
+
+        ir["sound"]["startConnected"] = serde_json::json!(false);
+        ir["sound"]["echoCancellation"] = serde_json::json!(true);
+        write_ir_file(&ir_path, &ir)?;
+        apply(&ir_path)?;
+
+        assert_vmx_entry(&vmx_path, "sound.startConnected", "FALSE")?;
+        assert_vmx_entry(&vmx_path, "sound.enableAEC", "TRUE")?;
+
+        // Simulate the PCI slot number VMware Fusion assigns to a sound card
+        duct::cmd!(
+            &CONFIG.dict_tool,
+            "-q",
+            "set",
+            &vmx_path,
+            "sound.pciSlotNumber=515"
+        )
+        .run()?;
+
+        ir["sound"] = serde_json::Value::Null;
+        write_ir_file(&ir_path, &ir)?;
+        apply(&ir_path)?;
+
+        [
+            "sound.present",
+            "sound.virtualDev",
+            "sound.autoDetect",
+            "sound.fileName",
+            "sound.startConnected",
+            "sound.enableAEC",
+            "sound.pciSlotNumber",
+        ]
+        .into_iter()
+        .try_for_each(|key| assert_vmx_entry_absent(&vmx_path, key))?;
+
         let vmx_contents = fs::read_to_string(&vmx_path)?;
         apply(&ir_path)?;
         assert_eq!(fs::read_to_string(&vmx_path)?, vmx_contents);

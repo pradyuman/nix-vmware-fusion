@@ -21,6 +21,7 @@ pub(super) struct VirtualMachine {
     pub disks: VirtualDisks,
     #[serde(default)]
     pub shared_folders: SharedFolders,
+    pub sound: Option<SoundCard>,
     #[serde(default)]
     pub optical_drives: OpticalDrives,
 }
@@ -98,6 +99,17 @@ pub(super) struct SharedFolder {
     pub host_path: SharedFolderPath,
     #[serde(default)]
     pub read_only: bool,
+}
+
+// Sound card
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct SoundCard {
+    #[serde(default = "default_true")]
+    pub start_connected: bool,
+    #[serde(default)]
+    pub echo_cancellation: bool,
 }
 
 // Optical drives

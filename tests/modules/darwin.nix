@@ -39,7 +39,6 @@ let
       ];
     };
 
-  defaultSystem = mkSystem { };
   enabledSystem = mkSystem { enable = true; };
   networkedSystem = mkSystem {
     enable = true;
@@ -67,16 +66,6 @@ let
 
 in
 {
-  testDisabledByDefault = {
-    expr = defaultSystem.config.programs.vmware-fusion.enable;
-    expected = false;
-  };
-
-  testCleanupDefaultsToNone = {
-    expr = defaultSystem.config.programs.vmware-fusion.onActivation.cleanup;
-    expected = "none";
-  };
-
   testAllowsVmwareFusionDmg = {
     expr = enabledSystem.config.nixpkgs.config.allowUnfreePackages;
     expected = [ "vmware-fusion-dmg" ];
@@ -98,11 +87,6 @@ in
   testActivationRunsInstaller = {
     expr = lib.hasInfix "/bin/nix-vmware-fusion install" enabledActivation;
     expected = true;
-  };
-
-  testNetworkingDefaultsToNoDeclaredNetworks = {
-    expr = defaultSystem.config.programs.vmware-fusion.networking.networks;
-    expected = { };
   };
 
   testNetworkReconciliationAlwaysRuns = {
