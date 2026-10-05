@@ -46,11 +46,13 @@ let
       closeAction = "power-off";
       confirmBeforeClosing = true;
       dataCollectionEnabled = false;
-      fullScreenMode = "stretch";
+      display = {
+        singleWindowFit = "stretch";
+        fullScreenFit = "stretch";
+      };
       gamingMouseMode = "never";
       integer = 42;
       perVirtualMachineShortcuts = true;
-      singleWindowMode = "stretch";
       string = "hello world";
     };
   };
@@ -77,6 +79,7 @@ let
       networkAdapters.primary = { };
       disks.primary.size = 64;
       sharedFolders.projects.hostPath = "/Users/asuna/projects";
+      display = { };
       sound = { };
       opticalDrives.installer.source = {
         type = "image";
@@ -146,6 +149,15 @@ in
     expectedError.type = "ThrownError";
   };
 
+  testInvalidDisplaySetting = {
+    expr =
+      (mkHome {
+        enable = true;
+        settings.display.fullScreenFit = "fit";
+      }).config.programs.vmware-fusion.settings.display.fullScreenFit;
+    expectedError.type = "ThrownError";
+  };
+
   testVirtualMachineDefaults = {
     expr = asuna;
     expected = {
@@ -172,6 +184,18 @@ in
       sharedFolders.projects = {
         hostPath = "/Users/asuna/projects";
         readOnly = false;
+      };
+      display = {
+        graphics = {
+          accelerate3D = true;
+          memory = 256;
+        };
+        nativeDisplayResolution = {
+          enable = false;
+        };
+        singleWindowFit = "inherit";
+        fullScreenFit = "inherit";
+        useAllDisplaysInFullScreen = false;
       };
       sound = {
         startConnected = true;

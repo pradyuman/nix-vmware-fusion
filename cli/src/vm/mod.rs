@@ -349,6 +349,83 @@ mod tests {
     }
 
     #[test]
+    fn manages_display_configuration() -> Result<()> {
+        let temp_dir = tempfile::tempdir()?;
+        let bundle_path = temp_dir.path().join("test.vmwarevm");
+        let vmx_path = bundle_path.join("test.vmx");
+        let disk_path = temp_dir.path().join("managed.vmdk");
+        let ir_path = temp_dir.path().join("virtual-machine-ir.json");
+
+        // Apply configured display settings
+        let mut ir = virtual_machine_ir(&bundle_path, &disk_path);
+        ir["display"] = serde_json::json!({
+            "graphics": {
+                "accelerate3D": false,
+                "memory": 515
+            },
+            "nativeDisplayResolution": {
+                "enable": true
+            },
+            "singleWindowFit": "stretch",
+            "fullScreenFit": "center",
+            "useAllDisplaysInFullScreen": true
+        });
+
+        write_ir_file(&ir_path, &ir)?;
+        apply(&ir_path)?;
+
+        assert_vmx_entry_absent(&vmx_path, "mks.enable3d")?;
+        assert_vmx_entry(&vmx_path, "svga.graphicsMemoryKB", "527360")?;
+        assert_vmx_entry(&vmx_path, "gui.perVMWindowAutofitMode", "stretch")?;
+        assert_vmx_entry(&vmx_path, "gui.perVMFullscreenAutofitMode", "center")?;
+        assert_vmx_entry(&vmx_path, "gui.fullScreenOnAllHostDisplays", "TRUE")?;
+        assert_vmx_entry(
+            &vmx_path,
+            "gui.fitGuestUsingNativeDisplayResolution",
+            "TRUE",
+        )?;
+
+        // Apply the default display settings
+        ir["display"] = serde_json::json!({});
+        write_ir_file(&ir_path, &ir)?;
+        apply(&ir_path)?;
+
+        assert_vmx_entry(&vmx_path, "mks.enable3d", "TRUE")?;
+        assert_vmx_entry(&vmx_path, "svga.graphicsMemoryKB", "262144")?;
+        [
+            "gui.perVMWindowAutofitMode",
+            "gui.perVMFullscreenAutofitMode",
+            "gui.fullScreenOnAllHostDisplays",
+            "gui.fitGuestUsingNativeDisplayResolution",
+        ]
+        .into_iter()
+        .try_for_each(|key| assert_vmx_entry_absent(&vmx_path, key))?;
+
+        // Remove the display configuration
+        ir["display"] = serde_json::Value::Null;
+        write_ir_file(&ir_path, &ir)?;
+        apply(&ir_path)?;
+
+        [
+            "mks.enable3d",
+            "svga.graphicsMemoryKB",
+            "gui.perVMWindowAutofitMode",
+            "gui.perVMFullscreenAutofitMode",
+            "gui.fullScreenOnAllHostDisplays",
+            "gui.fitGuestUsingNativeDisplayResolution",
+        ]
+        .into_iter()
+        .try_for_each(|key| assert_vmx_entry_absent(&vmx_path, key))?;
+
+        // Reapplying the same configuration should leave the VMX unchanged
+        let vmx_contents = fs::read_to_string(&vmx_path)?;
+        apply(&ir_path)?;
+        assert_eq!(fs::read_to_string(&vmx_path)?, vmx_contents);
+
+        Ok(())
+    }
+
+    #[test]
     fn manages_sound_card() -> Result<()> {
         let temp_dir = tempfile::tempdir()?;
         let bundle_path = temp_dir.path().join("test.vmwarevm");
@@ -356,6 +433,7 @@ mod tests {
         let disk_path = temp_dir.path().join("managed.vmdk");
         let ir_path = temp_dir.path().join("virtual-machine-ir.json");
 
+        // Apply the default sound card settings
         let mut ir = virtual_machine_ir(&bundle_path, &disk_path);
         ir["sound"] = serde_json::json!({});
 
@@ -369,6 +447,7 @@ mod tests {
         assert_vmx_entry_absent(&vmx_path, "sound.startConnected")?;
         assert_vmx_entry_absent(&vmx_path, "sound.enableAEC")?;
 
+        // Apply configured sound card settings
         ir["sound"]["startConnected"] = serde_json::json!(false);
         ir["sound"]["echoCancellation"] = serde_json::json!(true);
         write_ir_file(&ir_path, &ir)?;
@@ -387,6 +466,7 @@ mod tests {
         )
         .run()?;
 
+        // Remove the sound card
         ir["sound"] = serde_json::Value::Null;
         write_ir_file(&ir_path, &ir)?;
         apply(&ir_path)?;
@@ -403,6 +483,7 @@ mod tests {
         .into_iter()
         .try_for_each(|key| assert_vmx_entry_absent(&vmx_path, key))?;
 
+        // Reapplying the same configuration should leave the VMX unchanged
         let vmx_contents = fs::read_to_string(&vmx_path)?;
         apply(&ir_path)?;
         assert_eq!(fs::read_to_string(&vmx_path)?, vmx_contents);

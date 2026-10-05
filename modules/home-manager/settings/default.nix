@@ -10,15 +10,18 @@ let
   localPkgs = import ../../../pkgs { inherit pkgs; };
 
   catalog = import ./catalog.nix;
-  catalogNames = builtins.attrNames catalog;
-  configuredCatalogSettings = lib.filterAttrs (_: value: value != null) (
-    builtins.intersectAttrs catalog cfg.settings
-  );
-  freeformSettings = builtins.removeAttrs cfg.settings catalogNames;
+  topLevelCatalog = builtins.removeAttrs catalog [ "display" ];
+  freeformSettings = builtins.removeAttrs cfg.settings (builtins.attrNames catalog);
   freeformPreferences = lib.mapAttrs' (
     name: value: lib.nameValuePair "pref.${name}" value
   ) freeformSettings;
-  writes = lib.mapAttrsToList (name: value: catalog.${name}.write value) configuredCatalogSettings;
+  writesFor =
+    catalog': settings:
+    lib.mapAttrsToList (name: value: catalog'.${name}.write value) (
+      lib.filterAttrs (_: value: value != null) (builtins.intersectAttrs catalog' settings)
+    );
+  writes =
+    (writesFor topLevelCatalog cfg.settings) ++ (writesFor catalog.display cfg.settings.display);
 
   mergeChanges = field: lib.mergeAttrsList (map (write: write.${field} or { }) writes);
 

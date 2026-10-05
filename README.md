@@ -111,7 +111,10 @@ To manage user preferences, use the Home Manager module:
       appearance = "dark";
       confirmBeforeClosing = true;
       dataCollectionEnabled = false;
-      fullScreenMode = "fit";
+      display = {
+        singleWindowFit = "resize";
+        fullScreenFit = "resize";
+      };
       mapISONumpadEnterToAltGrEnabled = false;
     };
   };
@@ -120,16 +123,16 @@ To manage user preferences, use the Home Manager module:
 
 The module supports these settings:
 
-| Setting                      | Values                           | Description                                                    |
-| ---------------------------- | -------------------------------- | -------------------------------------------------------------- |
-| `appearance`                 | `"auto"`, `"light"`, `"dark"`    | VMware Fusion's appearance.                                    |
-| `closeAction`                | `"suspend"`, `"power-off"`       | Action to take when closing a virtual machine window.          |
-| `confirmBeforeClosing`       | `true`, `false`                  | Whether to confirm before closing a virtual machine or Fusion. |
-| `dataCollectionEnabled`      | `true`, `false`                  | Whether to participate in VMware's data collection program.    |
-| `fullScreenMode`             | `"center"`, `"stretch"`, `"fit"` | How to size a virtual machine in full screen.                  |
-| `gamingMouseMode`            | `"auto"`, `"never"`, `"always"`  | When to optimize the mouse for games.                          |
-| `perVirtualMachineShortcuts` | `true`, `false`                  | Whether to enable per-virtual machine keyboard shortcuts.      |
-| `singleWindowMode`           | `"stretch"`, `"resize"`          | How to size a virtual machine in a single window.              |
+| Setting                      | Values                              | Description                                                    |
+| ---------------------------- | ----------------------------------- | -------------------------------------------------------------- |
+| `appearance`                 | `"auto"`, `"light"`, `"dark"`       | VMware Fusion's appearance.                                    |
+| `closeAction`                | `"suspend"`, `"power-off"`          | Action to take when closing a virtual machine window.          |
+| `confirmBeforeClosing`       | `true`, `false`                     | Whether to confirm before closing a virtual machine or Fusion. |
+| `dataCollectionEnabled`      | `true`, `false`                     | Whether to participate in VMware's data collection program.    |
+| `display.singleWindowFit`    | `"stretch"`, `"resize"`             | How to size the virtual machine display in single-window mode. |
+| `display.fullScreenFit`      | `"center"`, `"stretch"`, `"resize"` | How to size the virtual machine display in full-screen mode.   |
+| `gamingMouseMode`            | `"auto"`, `"never"`, `"always"`     | When to optimize the mouse for games.                          |
+| `perVirtualMachineShortcuts` | `true`, `false`                     | Whether to enable per-virtual machine keyboard shortcuts.      |
 
 To manage a setting that is not listed above, add its VMware preference key to
 `settings` without the `pref.` prefix. Settings you do not specify are left
@@ -286,6 +289,38 @@ Each shared folder supports the following settings:
 
 The attribute name (`projects` above) becomes the shared folder name reported
 to the guest.
+
+### Display
+
+Configure the VM's display settings:
+
+```nix
+programs.vmware-fusion.virtualMachines.asuna.display = {
+  graphics = {
+    accelerate3D = true;
+    memory = 1024;
+  };
+  nativeDisplayResolution = {
+    enable = false;
+  };
+  singleWindowFit = "inherit";
+  fullScreenFit = "inherit";
+  useAllDisplaysInFullScreen = false;
+};
+```
+
+The display configuration supports the following settings:
+
+| Setting                          | Type                                                | Default     | Description                                                                  |
+| -------------------------------- | --------------------------------------------------- | ----------- | ---------------------------------------------------------------------------- |
+| `graphics.accelerate3D`          | Boolean                                             | `true`      | Whether to enable accelerated 3D graphics                                    |
+| `graphics.memory`                | Positive integer                                    | `256` MiB   | Maximum VM memory available for graphics                                     |
+| `nativeDisplayResolution.enable` | Boolean                                             | `false`     | Whether to render the guest using the host display's native pixel resolution |
+| `singleWindowFit`                | `"inherit"`, `"stretch"`, or `"resize"`             | `"inherit"` | How to size the virtual machine display in single-window mode                |
+| `fullScreenFit`                  | `"inherit"`, `"center"`, `"stretch"`, or `"resize"` | `"inherit"` | How to size the virtual machine display in full-screen mode                  |
+| `useAllDisplaysInFullScreen`     | Boolean                                             | `false`     | Whether to use all host displays in full-screen mode                         |
+
+Removing `display` restores VMware Fusion's default behavior for these settings.
 
 ### Sound card
 

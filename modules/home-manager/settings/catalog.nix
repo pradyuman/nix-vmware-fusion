@@ -19,7 +19,10 @@
 #   write :: String -> Write;
 # }
 #
-# τ Catalog = { String = BoolSetting | EnumSetting; }
+# τ Catalog = {
+#   display :: { String = BoolSetting | EnumSetting; };
+#   String = BoolSetting | EnumSetting;
+# }
 
 let
   writePreference = name: encode: value: {
@@ -81,22 +84,39 @@ in
     write = writePreference "pref.dataCollectionEnabled" (value: value);
   };
 
-  fullScreenMode = {
-    type = "enum";
-    values = [
-      "center"
-      "stretch"
-      "fit"
-    ];
-    description = "How to size a virtual machine in full screen.";
-    write = writePreference "pref.autoFitFullScreen" (
-      value:
-      builtins.getAttr value {
-        center = "none";
-        stretch = "stretchGuestToHost";
-        fit = "fitGuestToHost";
-      }
-    );
+  display = {
+    singleWindowFit = {
+      type = "enum";
+      values = [
+        "stretch"
+        "resize"
+      ];
+      description = "How to size the virtual machine display in single-window mode.";
+      write = value: {
+        preferences = {
+          "pref.autoFit" = value == "resize";
+          "pref.autoFitGuestToWindow" = value == "resize";
+        };
+      };
+    };
+
+    fullScreenFit = {
+      type = "enum";
+      values = [
+        "center"
+        "stretch"
+        "resize"
+      ];
+      description = "How to size the virtual machine display in full-screen mode.";
+      write = writePreference "pref.autoFitFullScreen" (
+        value:
+        builtins.getAttr value {
+          center = "none";
+          stretch = "stretchGuestToHost";
+          resize = "fitGuestToHost";
+        }
+      );
+    };
   };
 
   gamingMouseMode = {
@@ -129,18 +149,4 @@ in
     write = writePreference "pref.keyboardAndMouse.vmHotKey.enabled" (value: value);
   };
 
-  singleWindowMode = {
-    type = "enum";
-    values = [
-      "stretch"
-      "resize"
-    ];
-    description = "How to size a virtual machine in a single window.";
-    write = value: {
-      preferences = {
-        "pref.autoFit" = value == "resize";
-        "pref.autoFitGuestToWindow" = value == "resize";
-      };
-    };
-  };
 }

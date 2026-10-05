@@ -21,6 +21,7 @@ pub(super) struct VirtualMachine {
     pub disks: VirtualDisks,
     #[serde(default)]
     pub shared_folders: SharedFolders,
+    pub display: Option<Display>,
     pub sound: Option<SoundCard>,
     #[serde(default)]
     pub optical_drives: OpticalDrives,
@@ -99,6 +100,65 @@ pub(super) struct SharedFolder {
     pub host_path: SharedFolderPath,
     #[serde(default)]
     pub read_only: bool,
+}
+
+// Display
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct Display {
+    #[serde(default)]
+    pub graphics: DisplayGraphics,
+    #[serde(default)]
+    pub native_display_resolution: NativeDisplayResolution,
+    #[serde(default)]
+    pub single_window_fit: SingleWindowFit,
+    #[serde(default)]
+    pub full_screen_fit: FullScreenFit,
+    #[serde(default)]
+    pub use_all_displays_in_full_screen: bool,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub(super) struct DisplayGraphics {
+    #[serde(rename = "accelerate3D")]
+    pub accelerate_3d: bool,
+    pub memory: NonZeroU64,
+}
+
+impl Default for DisplayGraphics {
+    fn default() -> Self {
+        Self {
+            accelerate_3d: true,
+            memory: NonZeroU64::new(256).unwrap(),
+        }
+    }
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub(super) struct NativeDisplayResolution {
+    pub enable: bool,
+}
+
+#[derive(Clone, Copy, Debug, Default, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub(super) enum SingleWindowFit {
+    #[default]
+    Inherit,
+    Stretch,
+    Resize,
+}
+
+#[derive(Clone, Copy, Debug, Default, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub(super) enum FullScreenFit {
+    #[default]
+    Inherit,
+    Center,
+    Stretch,
+    Resize,
 }
 
 // Sound card
