@@ -2,11 +2,12 @@ use anyhow::Result;
 
 use crate::vm::schema::VirtualMachine;
 
-use super::{Plan, Snapshot};
+use super::{Action, Plan, Snapshot};
 
 mod base;
 mod cpu;
 mod display;
+mod isolation;
 mod sound;
 mod usb;
 
@@ -17,6 +18,7 @@ pub(crate) fn plan(configured: &VirtualMachine, snapshot: Snapshot) -> Result<Pl
         .chain(display::plan(configured.display.as_ref()))
         .chain(sound::plan(configured.sound.as_ref()))
         .chain(usb::plan(configured.usb.as_ref()))
+        .chain(isolation::plan(&configured.isolation))
         .collect();
 
     Ok(Plan {
@@ -24,4 +26,12 @@ pub(crate) fn plan(configured: &VirtualMachine, snapshot: Snapshot) -> Result<Pl
         guest_os: configured.guest_os.clone(),
         actions,
     })
+}
+
+fn boolean(key: &'static str, value: bool, default: bool) -> Action {
+    if value == default {
+        Action::Remove(key)
+    } else {
+        Action::Set(key, if value { "TRUE" } else { "FALSE" }.to_owned())
+    }
 }

@@ -1,5 +1,7 @@
 use crate::vm::{schema::SoundCard, vmx::Action};
 
+use super::boolean;
+
 const MANAGED_KEYS: [&str; 7] = [
     "sound.present",
     "sound.virtualDev",
@@ -24,14 +26,6 @@ pub(super) fn plan(configured: Option<&SoundCard>) -> Vec<Action> {
             ]
         },
     )
-}
-
-fn boolean(key: &'static str, value: bool, default: bool) -> Action {
-    if value == default {
-        Action::Remove(key)
-    } else {
-        Action::Set(key, if value { "TRUE" } else { "FALSE" }.to_owned())
-    }
 }
 
 #[cfg(test)]

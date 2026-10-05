@@ -396,6 +396,22 @@ Optical drives can be updated by changing `source` or detached by removing
 their declaration. The module only changes drives declared here or previously
 managed by it.
 
+### Isolation
+
+Configure how content is shared between the host and guest:
+
+```nix
+programs.vmware-fusion.virtualMachines.asuna.isolation = {
+  clipboard = true;
+  dragAndDrop = true;
+};
+```
+
+| Setting       | Type    | Default | Description                                                             |
+| ------------- | ------- | ------- | ----------------------------------------------------------------------- |
+| `clipboard`   | Boolean | `true`  | Whether to enable sharing clipboard contents between the host and guest |
+| `dragAndDrop` | Boolean | `true`  | Whether to enable drag and drop between the host and guest              |
+
 ## Remove VMware Fusion
 
 ### Uninstall

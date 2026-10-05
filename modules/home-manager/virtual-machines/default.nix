@@ -16,6 +16,7 @@ let
   soundCardType = import ./sound.nix { inherit lib; };
   usbType = import ./usb.nix { inherit lib; };
   opticalDriveType = import ./optical-drive.nix { inherit lib; };
+  isolationType = import ./isolation.nix { inherit lib; };
 
   virtualMachineModule =
     { name, config, ... }:
@@ -106,6 +107,12 @@ let
           type = lib.types.attrsOf opticalDriveType;
           default = { };
           description = "Virtual optical drives attached to the VM. Removing a declaration detaches the drive without deleting its image.";
+        };
+
+        isolation = lib.mkOption {
+          type = isolationType;
+          default = { };
+          description = "Guest isolation configuration for the VM.";
         };
       };
     };

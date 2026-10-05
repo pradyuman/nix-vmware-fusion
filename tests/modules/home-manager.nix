@@ -210,6 +210,10 @@ in
         };
         startConnected = true;
       };
+      isolation = {
+        clipboard = true;
+        dragAndDrop = true;
+      };
     };
   };
 

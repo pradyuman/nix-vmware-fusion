@@ -26,6 +26,8 @@ pub(super) struct VirtualMachine {
     pub usb: Option<Usb>,
     #[serde(default)]
     pub optical_drives: OpticalDrives,
+    #[serde(default)]
+    pub isolation: Isolation,
 }
 
 // Network adapters
@@ -217,6 +219,24 @@ pub(super) struct OpticalDrive {
 #[serde(tag = "type", rename_all = "lowercase")]
 pub(super) enum OpticalDriveSource {
     Image { path: OpticalImagePath },
+}
+
+// Isolation
+
+#[derive(Debug, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub(super) struct Isolation {
+    pub clipboard: bool,
+    pub drag_and_drop: bool,
+}
+
+impl Default for Isolation {
+    fn default() -> Self {
+        Self {
+            clipboard: true,
+            drag_and_drop: true,
+        }
+    }
 }
 
 // Paths
