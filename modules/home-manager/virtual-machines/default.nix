@@ -14,6 +14,7 @@ let
   sharedFolderType = import ./shared-folder.nix { inherit lib; };
   displayType = import ./display.nix { inherit lib; };
   soundCardType = import ./sound.nix { inherit lib; };
+  usbType = import ./usb.nix { inherit lib; };
   opticalDriveType = import ./optical-drive.nix { inherit lib; };
 
   virtualMachineModule =
@@ -93,6 +94,12 @@ let
           type = lib.types.nullOr soundCardType;
           default = null;
           description = "VMware HD Audio sound card attached to the VM.";
+        };
+
+        usb = lib.mkOption {
+          type = lib.types.nullOr usbType;
+          default = { };
+          description = "Virtual USB controller attached to the VM.";
         };
 
         opticalDrives = lib.mkOption {

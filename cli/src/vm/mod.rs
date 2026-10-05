@@ -215,7 +215,8 @@ mod tests {
                     "size": 1,
                     "bus": "nvme"
                 }
-            }
+            },
+            "usb": {}
         })
     }
 
@@ -261,6 +262,8 @@ mod tests {
         assert::vmx_entry(&vmx_path, "memsize", "4096")?;
         assert::vmx_entry(&vmx_path, "uefi.secureBoot.enabled", "TRUE")?;
         assert::vmx_entry(&vmx_path, "firmware", "efi")?;
+        assert::vmx_entry(&vmx_path, "usb.present", "TRUE")?;
+        assert::vmx_entry(&vmx_path, "ehci.present", "TRUE")?;
         assert::vmx_entry(&vmx_path, "usb_xhci.present", "TRUE")?;
 
         let snapshot = inspect_ir(&ir)?;
@@ -504,6 +507,78 @@ mod tests {
         ]
         .into_iter()
         .try_for_each(|key| assert::vmx_entry_absent(&vmx_path, key))?;
+
+        // Reapplying the same configuration should leave the VMX unchanged
+        let vmx_contents = fs::read_to_string(&vmx_path)?;
+        apply(&ir_path)?;
+        assert_eq!(fs::read_to_string(&vmx_path)?, vmx_contents);
+
+        Ok(())
+    }
+
+    #[test]
+    fn manages_usb_controller() -> Result<()> {
+        let temp_dir = tempfile::tempdir()?;
+        let bundle_path = temp_dir.path().join("test.vmwarevm");
+        let vmx_path = bundle_path.join("test.vmx");
+        let disk_path = temp_dir.path().join("managed.vmdk");
+        let ir_path = temp_dir.path().join("virtual-machine-ir.json");
+
+        // Apply the default USB controller configuration
+        let mut ir = virtual_machine_ir(&bundle_path, &disk_path);
+        write_ir_file(&ir_path, &ir)?;
+        apply(&ir_path)?;
+
+        assert::vmx_entry(&vmx_path, "usb.present", "TRUE")?;
+        assert::vmx_entry(&vmx_path, "ehci.present", "TRUE")?;
+        assert::vmx_entry(&vmx_path, "usb_xhci.present", "TRUE")?;
+        assert::vmx_entry_absent(&vmx_path, "usb.generic.pluginAction")?;
+
+        // Connect new USB devices to the virtual machine
+        ir["usb"]["newDeviceAction"] = serde_json::json!("connect-to-vm");
+        write_ir_file(&ir_path, &ir)?;
+        apply(&ir_path)?;
+
+        assert::vmx_entry(&vmx_path, "usb.generic.pluginAction", "guest")?;
+
+        // Keep new USB devices connected to the host
+        ir["usb"]["newDeviceAction"] = serde_json::json!("connect-to-host");
+        write_ir_file(&ir_path, &ir)?;
+        apply(&ir_path)?;
+
+        assert::vmx_entry(&vmx_path, "usb.generic.pluginAction", "host")?;
+
+        // Simulate the PCI slot number VMware Fusion assigns to the controller
+        duct::cmd!(
+            &CONFIG.dict_tool,
+            "-q",
+            "set",
+            &vmx_path,
+            "usb_xhci.pciSlotNumber=515"
+        )
+        .run()?;
+
+        // Remove the USB controller without removing VMware-owned entries
+        ir["usb"] = serde_json::Value::Null;
+        write_ir_file(&ir_path, &ir)?;
+        apply(&ir_path)?;
+
+        assert::vmx_entry_absent(&vmx_path, "usb.present")?;
+        assert::vmx_entry_absent(&vmx_path, "ehci.present")?;
+        assert::vmx_entry_absent(&vmx_path, "usb_xhci.present")?;
+        assert::vmx_entry_absent(&vmx_path, "usb.generic.pluginAction")?;
+        assert::vmx_entry(&vmx_path, "usb_xhci.pciSlotNumber", "515")?;
+
+        // Restore the USB controller
+        ir["usb"] = serde_json::json!({});
+        write_ir_file(&ir_path, &ir)?;
+        apply(&ir_path)?;
+
+        assert::vmx_entry(&vmx_path, "usb.present", "TRUE")?;
+        assert::vmx_entry(&vmx_path, "ehci.present", "TRUE")?;
+        assert::vmx_entry(&vmx_path, "usb_xhci.present", "TRUE")?;
+        assert::vmx_entry_absent(&vmx_path, "usb.generic.pluginAction")?;
+        assert::vmx_entry(&vmx_path, "usb_xhci.pciSlotNumber", "515")?;
 
         // Reapplying the same configuration should leave the VMX unchanged
         let vmx_contents = fs::read_to_string(&vmx_path)?;

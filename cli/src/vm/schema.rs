@@ -23,6 +23,7 @@ pub(super) struct VirtualMachine {
     pub shared_folders: SharedFolders,
     pub display: Option<Display>,
     pub sound: Option<SoundCard>,
+    pub usb: Option<Usb>,
     #[serde(default)]
     pub optical_drives: OpticalDrives,
 }
@@ -180,6 +181,24 @@ pub(super) struct SoundCard {
     pub start_connected: bool,
     #[serde(default)]
     pub echo_cancellation: bool,
+}
+
+// USB
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct Usb {
+    #[serde(default)]
+    pub new_device_action: UsbNewDeviceAction,
+}
+
+#[derive(Clone, Copy, Debug, Default, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub(super) enum UsbNewDeviceAction {
+    #[default]
+    Ask,
+    ConnectToVm,
+    ConnectToHost,
 }
 
 // Optical drives

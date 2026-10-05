@@ -8,6 +8,7 @@ mod base;
 mod cpu;
 mod display;
 mod sound;
+mod usb;
 
 pub(crate) fn plan(configured: &VirtualMachine, snapshot: Snapshot) -> Result<Plan> {
     let actions = base::plan(configured, &snapshot)
@@ -15,6 +16,7 @@ pub(crate) fn plan(configured: &VirtualMachine, snapshot: Snapshot) -> Result<Pl
         .chain(cpu::plan(configured)?)
         .chain(display::plan(configured.display.as_ref()))
         .chain(sound::plan(configured.sound.as_ref()))
+        .chain(usb::plan(configured.usb.as_ref()))
         .collect();
 
     Ok(Plan {

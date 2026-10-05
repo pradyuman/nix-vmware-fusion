@@ -23,9 +23,6 @@ pub(super) fn plan(configured: &VirtualMachine, snapshot: &Snapshot) -> Vec<Acti
         // Fusion on Apple silicon requires UEFI; BIOS is unsupported
         // https://knowledge.broadcom.com/external/article/315602
         actions.push(Action::Set("firmware", "efi".to_owned()));
-
-        // Enable keyboard and mouse input through the virtual XHCI controller
-        actions.push(Action::Set("usb_xhci.present", "TRUE".to_owned()));
     }
 
     actions

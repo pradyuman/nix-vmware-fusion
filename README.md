@@ -349,6 +349,24 @@ The sound card uses the host's default audio input and output devices.
 
 Removing `sound` from the configuration removes the sound card from the VM.
 
+### USB controller
+
+A virtual USB controller is attached to the VM by default. You can configure
+how new USB devices are handled:
+
+```nix
+programs.vmware-fusion.virtualMachines.asuna.usb = {
+  newDeviceAction = "ask";
+};
+```
+
+| Setting           | Type                                               | Default | Description                                                   |
+| ----------------- | -------------------------------------------------- | ------- | ------------------------------------------------------------- |
+| `newDeviceAction` | `"ask"`, `"connect-to-vm"`, or `"connect-to-host"` | `"ask"` | Action to take when a new USB device is connected to the host |
+
+Setting `usb` to `null` removes the controller and disables USB device
+passthrough.
+
 ### Optical drives
 
 Attach an ISO image to the VM with a virtual optical drive:

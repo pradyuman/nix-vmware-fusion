@@ -202,6 +202,7 @@ in
         startConnected = true;
         echoCancellation = false;
       };
+      usb.newDeviceAction = "ask";
       opticalDrives.installer = {
         source = {
           type = "image";
