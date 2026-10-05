@@ -102,13 +102,13 @@ in
         ) value;
   };
 
-  dataCollectionEnabled = {
+  dataCollection = {
     type = "bool";
     description = "Whether to participate in VMware's Customer Experience Improvement Program.";
     write = writePreference "pref.dataCollectionEnabled" (value: value);
   };
 
-  perVmKeyboardShortcutsEnabled = {
+  perVmKeyboardShortcuts = {
     type = "bool";
     description = "Whether to enable per-virtual machine keyboard shortcuts.";
     write = writePreference "pref.keyboardAndMouse.vmHotKey.enabled" (value: value);

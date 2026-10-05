@@ -46,8 +46,8 @@ let
       closeAction = "power-off";
       confirmBeforeClosing = true;
       gamingMouseMode = "never";
-      dataCollectionEnabled = false;
-      perVmKeyboardShortcutsEnabled = true;
+      dataCollection = false;
+      perVmKeyboardShortcuts = true;
       display = {
         singleWindowFit = "stretch";
         fullScreenFit = "stretch";
@@ -192,6 +192,7 @@ in
         };
         nativeDisplayResolution = {
           enable = false;
+          scaledHighResolution = "all";
         };
         singleWindowFit = "inherit";
         fullScreenFit = "inherit";

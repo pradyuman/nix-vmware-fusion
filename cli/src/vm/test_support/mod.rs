@@ -5,6 +5,8 @@ use crate::config::CONFIG;
 
 use super::vmx;
 
+pub(super) mod assert;
+
 pub(super) const GUEST_OS: &str = "arm-other6xlinux-64";
 
 pub(super) fn create_vmx() -> Result<(tempfile::TempDir, PathBuf)> {
@@ -30,25 +32,6 @@ pub(super) fn create_vmdk(path: &Path, size: &str) -> Result<()> {
         path
     )
     .run()?;
-
-    Ok(())
-}
-
-pub(super) fn assert_vmx_entry(path: &Path, key: &str, value: &str) -> Result<()> {
-    let entry = duct::cmd!(&CONFIG.dict_tool, "-q", "query", path, key).read()?;
-
-    assert_eq!(entry, format!(r#"{key} = "{value}""#));
-
-    Ok(())
-}
-
-pub(super) fn assert_vmx_entry_absent(path: &Path, key: &str) -> Result<()> {
-    let output = duct::cmd!(&CONFIG.dict_tool, "-q", "query", path, key)
-        .stderr_null()
-        .unchecked()
-        .run()?;
-
-    assert!(!output.status.success(), "VMX entry {key} is present");
 
     Ok(())
 }

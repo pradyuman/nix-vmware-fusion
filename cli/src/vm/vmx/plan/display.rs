@@ -87,7 +87,7 @@ fn fit(key: &'static str, value: Option<&str>) -> Action {
 mod tests {
     use std::num::NonZeroU64;
 
-    use crate::vm::schema::{DisplayGraphics, NativeDisplayResolution};
+    use crate::vm::schema::{DisplayGraphics, NativeDisplayResolution, ScaledHighResolution};
 
     use super::*;
 
@@ -98,7 +98,10 @@ mod tests {
                 accelerate_3d: false,
                 memory: NonZeroU64::new(515).unwrap(),
             },
-            native_display_resolution: NativeDisplayResolution { enable: true },
+            native_display_resolution: NativeDisplayResolution {
+                enable: true,
+                scaled_high_resolution: ScaledHighResolution::All,
+            },
             single_window_fit: SingleWindowFit::Stretch,
             full_screen_fit: FullScreenFit::Center,
             use_all_displays_in_full_screen: true,

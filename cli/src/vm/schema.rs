@@ -140,6 +140,16 @@ impl Default for DisplayGraphics {
 #[serde(default, rename_all = "camelCase")]
 pub(super) struct NativeDisplayResolution {
     pub enable: bool,
+    pub scaled_high_resolution: ScaledHighResolution,
+}
+
+#[derive(Clone, Copy, Debug, Default, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub(super) enum ScaledHighResolution {
+    FullScreen,
+    SingleWindow,
+    #[default]
+    All,
 }
 
 #[derive(Clone, Copy, Debug, Default, Deserialize)]

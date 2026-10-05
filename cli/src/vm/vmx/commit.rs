@@ -7,6 +7,10 @@ use super::StagedChange;
 
 impl StagedChange {
     pub(crate) fn commit(self) -> Result<()> {
+        if self.is_noop() {
+            return Ok(());
+        }
+
         let bundle_path = self
             .snapshot
             .target_path

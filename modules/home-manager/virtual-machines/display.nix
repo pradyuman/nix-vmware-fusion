@@ -20,6 +20,16 @@ let
   nativeDisplayResolutionType = lib.types.submodule {
     options = {
       enable = lib.mkEnableOption "the host display's native pixel resolution for the guest";
+
+      scaledHighResolution = lib.mkOption {
+        type = lib.types.enum [
+          "full-screen"
+          "single-window"
+          "all"
+        ];
+        default = "all";
+        description = "View modes in which non-Retina displays use scaled high-resolution rendering.";
+      };
     };
   };
 in

@@ -7,6 +7,7 @@ use crate::config::CONFIG;
 mod disk;
 mod network;
 mod optical;
+mod plist;
 mod schema;
 mod shared_folder;
 mod state;
@@ -19,6 +20,7 @@ mod test_support;
 
 struct Snapshot {
     vmx: vmx::Snapshot,
+    plist: plist::Snapshot,
     network: network::Snapshot,
     disk: disk::Snapshot,
     shared_folder: shared_folder::Snapshot,
@@ -27,6 +29,7 @@ struct Snapshot {
 
 fn inspect(configured: &schema::VirtualMachine) -> Result<Snapshot> {
     let vmx = vmx::inspect(configured.path.as_ref())?;
+    let plist = plist::inspect(&vmx.target_path)?;
     let network = network::inspect(&vmx.target_path)?;
     let disk = disk::inspect(&vmx.target_path, &configured.disks)?;
     let shared_folder = shared_folder::inspect(&vmx.target_path)?;
@@ -34,6 +37,7 @@ fn inspect(configured: &schema::VirtualMachine) -> Result<Snapshot> {
 
     Ok(Snapshot {
         vmx,
+        plist,
         network,
         disk,
         shared_folder,
@@ -45,6 +49,7 @@ fn inspect(configured: &schema::VirtualMachine) -> Result<Snapshot> {
 
 struct Plan {
     vmx: vmx::Plan,
+    plist: plist::Plan,
     network: network::Plan,
     disk: disk::Plan,
     shared_folder: shared_folder::Plan,
@@ -53,6 +58,7 @@ struct Plan {
 
 fn plan(configured: &schema::VirtualMachine, snapshot: Snapshot) -> Result<Plan> {
     let vmx = vmx::plan(configured, snapshot.vmx)?;
+    let plist = plist::plan(configured.display.as_ref(), snapshot.plist);
     let network = network::plan(&configured.network_adapters, snapshot.network)?;
     let disk = disk::plan(&configured.disks, snapshot.disk)?;
     let shared_folder = shared_folder::plan(&configured.shared_folders, snapshot.shared_folder)?;
@@ -60,6 +66,7 @@ fn plan(configured: &schema::VirtualMachine, snapshot: Snapshot) -> Result<Plan>
 
     Ok(Plan {
         vmx,
+        plist,
         network,
         disk,
         shared_folder,
@@ -71,6 +78,7 @@ fn plan(configured: &schema::VirtualMachine, snapshot: Snapshot) -> Result<Plan>
 
 struct StagedChange {
     vmx: vmx::StagedChange,
+    plist: plist::StagedChange,
     disk: disk::StagedChange,
     optical: optical::StagedChange,
 }
@@ -78,6 +86,7 @@ struct StagedChange {
 fn stage(plan: Plan) -> Result<StagedChange> {
     let Plan {
         vmx,
+        plist,
         network,
         disk,
         shared_folder,
@@ -95,6 +104,7 @@ fn stage(plan: Plan) -> Result<StagedChange> {
     network::stage(&draft_path, network)?;
     shared_folder::stage(&draft_path, shared_folder)?;
 
+    let plist = plist::stage(plist)?;
     let disk = disk::stage(&draft_path, disk)?;
     let optical = optical::stage(&draft_path, optical)?;
 
@@ -106,6 +116,7 @@ fn stage(plan: Plan) -> Result<StagedChange> {
             snapshot: vmx.snapshot,
             updated_contents,
         },
+        plist,
         disk,
         optical,
     })
@@ -115,6 +126,7 @@ fn stage(plan: Plan) -> Result<StagedChange> {
 
 fn commit(staged: StagedChange) -> Result<()> {
     let vmx_changed = !staged.vmx.is_noop();
+    let plist_changed = !staged.plist.is_noop();
     let disk_changed = !staged.disk.is_noop();
 
     let bundle_path = staged
@@ -125,15 +137,12 @@ fn commit(staged: StagedChange) -> Result<()> {
         .context("missing VMX directory")?
         .to_owned();
 
-    if vmx_changed || disk_changed {
+    if vmx_changed || plist_changed || disk_changed {
         ensure_stopped(&staged.vmx.snapshot.target_path)?;
     }
-    if disk_changed {
-        staged.disk.commit()?;
-    }
-    if vmx_changed {
-        staged.vmx.commit()?;
-    }
+    staged.disk.commit()?;
+    staged.vmx.commit()?;
+    staged.plist.commit()?;
 
     // State can change without the VMX.
     staged.optical.commit(&bundle_path)?;
@@ -185,9 +194,7 @@ mod tests {
 
     use super::disk::BYTES_PER_GIB;
     use super::schema::VirtualMachine;
-    use super::test_support::{
-        GUEST_OS, assert_vmx_entry, assert_vmx_entry_absent, create_vmdk, create_vmx,
-    };
+    use super::test_support::{GUEST_OS, assert, create_vmdk, create_vmx};
     use super::*;
 
     fn virtual_machine_ir(bundle_path: &Path, disk_path: &Path) -> serde_json::Value {
@@ -247,14 +254,14 @@ mod tests {
         // Apply the initial configuration
         apply(&ir_path)?;
 
-        assert_vmx_entry(&vmx_path, "displayName", "Test VM")?;
-        assert_vmx_entry(&vmx_path, "guestOS", GUEST_OS)?;
-        assert_vmx_entry(&vmx_path, "numvcpus", "4")?;
-        assert_vmx_entry(&vmx_path, "cpuid.coresPerSocket", "2")?;
-        assert_vmx_entry(&vmx_path, "memsize", "4096")?;
-        assert_vmx_entry(&vmx_path, "uefi.secureBoot.enabled", "TRUE")?;
-        assert_vmx_entry(&vmx_path, "firmware", "efi")?;
-        assert_vmx_entry(&vmx_path, "usb_xhci.present", "TRUE")?;
+        assert::vmx_entry(&vmx_path, "displayName", "Test VM")?;
+        assert::vmx_entry(&vmx_path, "guestOS", GUEST_OS)?;
+        assert::vmx_entry(&vmx_path, "numvcpus", "4")?;
+        assert::vmx_entry(&vmx_path, "cpuid.coresPerSocket", "2")?;
+        assert::vmx_entry(&vmx_path, "memsize", "4096")?;
+        assert::vmx_entry(&vmx_path, "uefi.secureBoot.enabled", "TRUE")?;
+        assert::vmx_entry(&vmx_path, "firmware", "efi")?;
+        assert::vmx_entry(&vmx_path, "usb_xhci.present", "TRUE")?;
 
         let snapshot = inspect_ir(&ir)?;
         let network_attachments = &snapshot.network.network_attachments;
@@ -320,11 +327,11 @@ mod tests {
         // Apply the updated configuration
         apply(&ir_path)?;
 
-        assert_vmx_entry(&vmx_path, "displayName", display_name)?;
-        assert_vmx_entry(&vmx_path, "numvcpus", &vcpus.to_string())?;
-        assert_vmx_entry_absent(&vmx_path, "cpuid.coresPerSocket")?;
-        assert_vmx_entry(&vmx_path, "memsize", &memory.to_string())?;
-        assert_vmx_entry(
+        assert::vmx_entry(&vmx_path, "displayName", display_name)?;
+        assert::vmx_entry(&vmx_path, "numvcpus", &vcpus.to_string())?;
+        assert::vmx_entry_absent(&vmx_path, "cpuid.coresPerSocket")?;
+        assert::vmx_entry(&vmx_path, "memsize", &memory.to_string())?;
+        assert::vmx_entry(
             &vmx_path,
             "uefi.secureBoot.enabled",
             if secure_boot { "TRUE" } else { "FALSE" },
@@ -353,6 +360,7 @@ mod tests {
         let temp_dir = tempfile::tempdir()?;
         let bundle_path = temp_dir.path().join("test.vmwarevm");
         let vmx_path = bundle_path.join("test.vmx");
+        let plist_path = bundle_path.join("test.plist");
         let disk_path = temp_dir.path().join("managed.vmdk");
         let ir_path = temp_dir.path().join("virtual-machine-ir.json");
 
@@ -364,7 +372,8 @@ mod tests {
                 "memory": 515
             },
             "nativeDisplayResolution": {
-                "enable": true
+                "enable": true,
+                "scaledHighResolution": "single-window"
             },
             "singleWindowFit": "stretch",
             "fullScreenFit": "center",
@@ -374,24 +383,33 @@ mod tests {
         write_ir_file(&ir_path, &ir)?;
         apply(&ir_path)?;
 
-        assert_vmx_entry_absent(&vmx_path, "mks.enable3d")?;
-        assert_vmx_entry(&vmx_path, "svga.graphicsMemoryKB", "527360")?;
-        assert_vmx_entry(&vmx_path, "gui.perVMWindowAutofitMode", "stretch")?;
-        assert_vmx_entry(&vmx_path, "gui.perVMFullscreenAutofitMode", "center")?;
-        assert_vmx_entry(&vmx_path, "gui.fullScreenOnAllHostDisplays", "TRUE")?;
-        assert_vmx_entry(
+        assert::vmx_entry_absent(&vmx_path, "mks.enable3d")?;
+        assert::vmx_entry(&vmx_path, "svga.graphicsMemoryKB", "527360")?;
+        assert::vmx_entry(&vmx_path, "gui.perVMWindowAutofitMode", "stretch")?;
+        assert::vmx_entry(&vmx_path, "gui.perVMFullscreenAutofitMode", "center")?;
+        assert::vmx_entry(&vmx_path, "gui.fullScreenOnAllHostDisplays", "TRUE")?;
+        assert::vmx_entry(
             &vmx_path,
             "gui.fitGuestUsingNativeDisplayResolution",
             "TRUE",
         )?;
+        assert::plist_integer(&plist_path, "scaledHighResolution", 2)?;
+
+        // Apply another scaled high-resolution mode
+        ir["display"]["nativeDisplayResolution"]["scaledHighResolution"] =
+            serde_json::json!("full-screen");
+        write_ir_file(&ir_path, &ir)?;
+        apply(&ir_path)?;
+
+        assert::plist_integer(&plist_path, "scaledHighResolution", 1)?;
 
         // Apply the default display settings
         ir["display"] = serde_json::json!({});
         write_ir_file(&ir_path, &ir)?;
         apply(&ir_path)?;
 
-        assert_vmx_entry(&vmx_path, "mks.enable3d", "TRUE")?;
-        assert_vmx_entry(&vmx_path, "svga.graphicsMemoryKB", "262144")?;
+        assert::vmx_entry(&vmx_path, "mks.enable3d", "TRUE")?;
+        assert::vmx_entry(&vmx_path, "svga.graphicsMemoryKB", "262144")?;
         [
             "gui.perVMWindowAutofitMode",
             "gui.perVMFullscreenAutofitMode",
@@ -399,7 +417,8 @@ mod tests {
             "gui.fitGuestUsingNativeDisplayResolution",
         ]
         .into_iter()
-        .try_for_each(|key| assert_vmx_entry_absent(&vmx_path, key))?;
+        .try_for_each(|key| assert::vmx_entry_absent(&vmx_path, key))?;
+        assert::plist_entry_absent(&plist_path, "scaledHighResolution")?;
 
         // Remove the display configuration
         ir["display"] = serde_json::Value::Null;
@@ -415,12 +434,15 @@ mod tests {
             "gui.fitGuestUsingNativeDisplayResolution",
         ]
         .into_iter()
-        .try_for_each(|key| assert_vmx_entry_absent(&vmx_path, key))?;
+        .try_for_each(|key| assert::vmx_entry_absent(&vmx_path, key))?;
+        assert::plist_entry_absent(&plist_path, "scaledHighResolution")?;
 
-        // Reapplying the same configuration should leave the VMX unchanged
+        // Reapplying the same configuration should leave both files unchanged
         let vmx_contents = fs::read_to_string(&vmx_path)?;
+        let plist_contents = fs::read(&plist_path)?;
         apply(&ir_path)?;
         assert_eq!(fs::read_to_string(&vmx_path)?, vmx_contents);
+        assert_eq!(fs::read(&plist_path)?, plist_contents);
 
         Ok(())
     }
@@ -440,12 +462,12 @@ mod tests {
         write_ir_file(&ir_path, &ir)?;
         apply(&ir_path)?;
 
-        assert_vmx_entry(&vmx_path, "sound.present", "TRUE")?;
-        assert_vmx_entry(&vmx_path, "sound.virtualDev", "hdaudio")?;
-        assert_vmx_entry(&vmx_path, "sound.autoDetect", "TRUE")?;
-        assert_vmx_entry(&vmx_path, "sound.fileName", "-1")?;
-        assert_vmx_entry_absent(&vmx_path, "sound.startConnected")?;
-        assert_vmx_entry_absent(&vmx_path, "sound.enableAEC")?;
+        assert::vmx_entry(&vmx_path, "sound.present", "TRUE")?;
+        assert::vmx_entry(&vmx_path, "sound.virtualDev", "hdaudio")?;
+        assert::vmx_entry(&vmx_path, "sound.autoDetect", "TRUE")?;
+        assert::vmx_entry(&vmx_path, "sound.fileName", "-1")?;
+        assert::vmx_entry_absent(&vmx_path, "sound.startConnected")?;
+        assert::vmx_entry_absent(&vmx_path, "sound.enableAEC")?;
 
         // Apply configured sound card settings
         ir["sound"]["startConnected"] = serde_json::json!(false);
@@ -453,8 +475,8 @@ mod tests {
         write_ir_file(&ir_path, &ir)?;
         apply(&ir_path)?;
 
-        assert_vmx_entry(&vmx_path, "sound.startConnected", "FALSE")?;
-        assert_vmx_entry(&vmx_path, "sound.enableAEC", "TRUE")?;
+        assert::vmx_entry(&vmx_path, "sound.startConnected", "FALSE")?;
+        assert::vmx_entry(&vmx_path, "sound.enableAEC", "TRUE")?;
 
         // Simulate the PCI slot number VMware Fusion assigns to a sound card
         duct::cmd!(
@@ -481,7 +503,7 @@ mod tests {
             "sound.pciSlotNumber",
         ]
         .into_iter()
-        .try_for_each(|key| assert_vmx_entry_absent(&vmx_path, key))?;
+        .try_for_each(|key| assert::vmx_entry_absent(&vmx_path, key))?;
 
         // Reapplying the same configuration should leave the VMX unchanged
         let vmx_contents = fs::read_to_string(&vmx_path)?;
@@ -572,6 +594,45 @@ mod tests {
 
         assert!(snapshot.optical.optical_attachments.is_empty());
         assert!(snapshot.optical.state.optical_drives.is_empty());
+
+        Ok(())
+    }
+
+    #[test]
+    fn renamed_bundle_uses_existing_vmx_and_plist_filenames() -> Result<()> {
+        let temp_dir = tempfile::tempdir()?;
+        let original_bundle_path = temp_dir.path().join("original.vmwarevm");
+        let renamed_bundle_path = temp_dir.path().join("renamed.vmwarevm");
+        let disk_path = temp_dir.path().join("managed.vmdk");
+        let ir_path = temp_dir.path().join("virtual-machine-ir.json");
+
+        // Create the VM using its original bundle name
+        let mut ir = virtual_machine_ir(&original_bundle_path, &disk_path);
+        ir["display"] = serde_json::json!({
+            "nativeDisplayResolution": {
+                "enable": true,
+                "scaledHighResolution": "single-window"
+            }
+        });
+        write_ir_file(&ir_path, &ir)?;
+        apply(&ir_path)?;
+
+        // Rename only the bundle, leaving its internal filenames unchanged
+        fs::rename(&original_bundle_path, &renamed_bundle_path)?;
+        ir["path"] = serde_json::json!(renamed_bundle_path);
+        ir["displayName"] = serde_json::json!("Renamed VM");
+        ir["display"]["nativeDisplayResolution"]["scaledHighResolution"] =
+            serde_json::json!("full-screen");
+        write_ir_file(&ir_path, &ir)?;
+        apply(&ir_path)?;
+
+        let vmx_path = renamed_bundle_path.join("original.vmx");
+        let plist_path = renamed_bundle_path.join("original.plist");
+
+        assert::vmx_entry(&vmx_path, "displayName", "Renamed VM")?;
+        assert::plist_integer(&plist_path, "scaledHighResolution", 1)?;
+        assert!(!renamed_bundle_path.join("renamed.vmx").try_exists()?);
+        assert!(!renamed_bundle_path.join("renamed.plist").try_exists()?);
 
         Ok(())
     }

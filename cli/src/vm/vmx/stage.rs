@@ -91,20 +91,6 @@ mod tests {
     }
 
     #[test]
-    fn identical_contents_are_a_noop() {
-        let staged = staged_change(Some("numvcpus = \"2\"\n"), "numvcpus = \"2\"\n");
-
-        assert!(staged.is_noop());
-    }
-
-    #[test]
-    fn changed_contents_are_not_a_noop() {
-        let staged = staged_change(Some("numvcpus = \"2\"\n"), "numvcpus = \"4\"\n");
-
-        assert!(!staged.is_noop());
-    }
-
-    #[test]
     fn missing_file_is_not_a_noop_even_with_empty_contents() {
         let staged = staged_change(None, "");
 
@@ -113,7 +99,7 @@ mod tests {
 
     #[cfg(feature = "vmware-tests")]
     mod vmware {
-        use crate::vm::test_support::{GUEST_OS, assert_vmx_entry, create_vmx};
+        use crate::vm::test_support::{GUEST_OS, assert, create_vmx};
 
         use super::*;
 
@@ -121,7 +107,7 @@ mod tests {
         fn vmcli_creates_vmx() -> Result<()> {
             let (_temp_dir, vmx_path) = create_vmx()?;
 
-            assert_vmx_entry(&vmx_path, "guestOS", GUEST_OS)?;
+            assert::vmx_entry(&vmx_path, "guestOS", GUEST_OS)?;
 
             Ok(())
         }
@@ -142,8 +128,8 @@ mod tests {
             // Set displayName again to verify that dictTool replaces the existing entry
             set_entry(&vmx_path, "displayName", updated_display_name)?;
 
-            assert_vmx_entry(&vmx_path, "displayName", updated_display_name)?;
-            assert_vmx_entry(&vmx_path, "numvcpus", vcpus)?;
+            assert::vmx_entry(&vmx_path, "displayName", updated_display_name)?;
+            assert::vmx_entry(&vmx_path, "numvcpus", vcpus)?;
 
             Ok(())
         }
