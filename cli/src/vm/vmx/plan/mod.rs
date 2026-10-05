@@ -35,3 +35,10 @@ fn boolean(key: &'static str, value: bool, default: bool) -> Action {
         Action::Set(key, if value { "TRUE" } else { "FALSE" }.to_owned())
     }
 }
+
+fn optional(key: &'static str, value: Option<&str>) -> Action {
+    value.map_or_else(
+        || Action::Remove(key),
+        |value| Action::Set(key, value.to_owned()),
+    )
+}

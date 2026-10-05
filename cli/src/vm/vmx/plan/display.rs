@@ -3,7 +3,7 @@ use crate::vm::{
     vmx::Action,
 };
 
-use super::boolean;
+use super::{boolean, optional};
 
 const MANAGED_KEYS: [&str; 6] = [
     "mks.enable3d",
@@ -42,11 +42,11 @@ pub(super) fn plan(configured: Option<&Display>) -> [Action; 6] {
             [
                 boolean("mks.enable3d", configured.graphics.accelerate_3d, false),
                 graphics_memory(configured),
-                fit(
+                optional(
                     "gui.perVMWindowAutofitMode",
                     configured.single_window_fit.vmx_value(),
                 ),
-                fit(
+                optional(
                     "gui.perVMFullscreenAutofitMode",
                     configured.full_screen_fit.vmx_value(),
                 ),
@@ -69,13 +69,6 @@ fn graphics_memory(display: &Display) -> Action {
     Action::Set(
         "svga.graphicsMemoryKB",
         (display.graphics.memory.get() * 1024).to_string(),
-    )
-}
-
-fn fit(key: &'static str, value: Option<&str>) -> Action {
-    value.map_or_else(
-        || Action::Remove(key),
-        |value| Action::Set(key, value.to_owned()),
     )
 }
 

@@ -3,6 +3,8 @@ use crate::vm::{
     vmx::Action,
 };
 
+use super::optional;
+
 const MANAGED_KEYS: [&str; 4] = [
     "usb.present",
     "ehci.present",
@@ -28,9 +30,9 @@ pub(super) fn plan(configured: Option<&Usb>) -> [Action; 4] {
                 Action::Set("usb.present", "TRUE".to_owned()),
                 Action::Set("ehci.present", "TRUE".to_owned()),
                 Action::Set("usb_xhci.present", "TRUE".to_owned()),
-                configured.new_device_action.vmx_value().map_or_else(
-                    || Action::Remove("usb.generic.pluginAction"),
-                    |value| Action::Set("usb.generic.pluginAction", value.to_owned()),
+                optional(
+                    "usb.generic.pluginAction",
+                    configured.new_device_action.vmx_value(),
                 ),
             ]
         },
