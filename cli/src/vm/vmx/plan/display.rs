@@ -33,28 +33,28 @@ impl FullScreenFit {
     }
 }
 
-pub(super) fn plan(display: Option<&Display>) -> [Action; 6] {
-    display.map_or_else(
+pub(super) fn plan(configured: Option<&Display>) -> [Action; 6] {
+    configured.map_or_else(
         || MANAGED_KEYS.map(Action::Remove),
-        |display| {
+        |configured| {
             [
-                enabled("mks.enable3d", display.graphics.accelerate_3d),
-                graphics_memory(display),
+                enabled("mks.enable3d", configured.graphics.accelerate_3d),
+                graphics_memory(configured),
                 fit(
                     "gui.perVMWindowAutofitMode",
-                    display.single_window_fit.vmx_value(),
+                    configured.single_window_fit.vmx_value(),
                 ),
                 fit(
                     "gui.perVMFullscreenAutofitMode",
-                    display.full_screen_fit.vmx_value(),
+                    configured.full_screen_fit.vmx_value(),
                 ),
                 enabled(
                     "gui.fullScreenOnAllHostDisplays",
-                    display.use_all_displays_in_full_screen,
+                    configured.use_all_displays_in_full_screen,
                 ),
                 enabled(
                     "gui.fitGuestUsingNativeDisplayResolution",
-                    display.native_display_resolution.enable,
+                    configured.native_display_resolution.enable,
                 ),
             ]
         },

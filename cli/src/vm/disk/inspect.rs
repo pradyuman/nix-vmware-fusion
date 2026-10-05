@@ -21,15 +21,15 @@ struct VmcliDisk {
     backing_path_name: PathBuf,
 }
 
-pub(crate) fn inspect(vmx_path: &Path, disks: &VirtualDisks) -> Result<Snapshot> {
+pub(crate) fn inspect(vmx_path: &Path, configured: &VirtualDisks) -> Result<Snapshot> {
     Ok(Snapshot {
-        disk_images: inspect_disks(disks)?,
+        disk_images: inspect_disks(configured)?,
         disk_attachments: query_disk_attachments(vmx_path)?,
     })
 }
 
-fn inspect_disks(disks: &VirtualDisks) -> Result<Vec<DiskImage>> {
-    disks
+fn inspect_disks(configured: &VirtualDisks) -> Result<Vec<DiskImage>> {
+    configured
         .values()
         .filter_map(|disk| inspect_disk(disk.path.as_ref()).transpose())
         .collect()

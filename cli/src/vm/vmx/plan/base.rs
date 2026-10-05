@@ -3,14 +3,19 @@ use crate::vm::{
     vmx::{Action, Snapshot},
 };
 
-pub(super) fn plan(schema: &VirtualMachine, snapshot: &Snapshot) -> Vec<Action> {
+pub(super) fn plan(configured: &VirtualMachine, snapshot: &Snapshot) -> Vec<Action> {
     let mut actions = vec![
-        Action::Set("displayName", schema.display_name.clone()),
-        Action::Set("guestOS", schema.guest_os.clone()),
-        Action::Set("memsize", schema.memory.to_string()),
+        Action::Set("displayName", configured.display_name.clone()),
+        Action::Set("guestOS", configured.guest_os.clone()),
+        Action::Set("memsize", configured.memory.to_string()),
         Action::Set(
             "uefi.secureBoot.enabled",
-            if schema.secure_boot { "TRUE" } else { "FALSE" }.to_owned(),
+            if configured.secure_boot {
+                "TRUE"
+            } else {
+                "FALSE"
+            }
+            .to_owned(),
         ),
     ];
 

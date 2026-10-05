@@ -46,10 +46,10 @@ enum Action {
 
 pub(crate) fn apply(path: &Path) -> Result<()> {
     let json = fs::read_to_string(path)?;
-    let schema = serde_json::from_str::<schema::Networks>(&json)?;
+    let configured = serde_json::from_str::<schema::Networks>(&json)?;
 
     let snapshot = inspect::inspect()?;
-    let plan = plan::plan(&schema, snapshot)?;
+    let plan = plan::plan(&configured, snapshot)?;
 
     commit::commit(plan)
 }

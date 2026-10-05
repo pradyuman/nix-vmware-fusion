@@ -25,10 +25,10 @@ struct Snapshot {
     optical: optical::Snapshot,
 }
 
-fn inspect(schema: &schema::VirtualMachine) -> Result<Snapshot> {
-    let vmx = vmx::inspect(schema.path.as_ref())?;
+fn inspect(configured: &schema::VirtualMachine) -> Result<Snapshot> {
+    let vmx = vmx::inspect(configured.path.as_ref())?;
     let network = network::inspect(&vmx.target_path)?;
-    let disk = disk::inspect(&vmx.target_path, &schema.disks)?;
+    let disk = disk::inspect(&vmx.target_path, &configured.disks)?;
     let shared_folder = shared_folder::inspect(&vmx.target_path)?;
     let optical = optical::inspect(&vmx.target_path)?;
 
@@ -51,12 +51,12 @@ struct Plan {
     optical: optical::Plan,
 }
 
-fn plan(schema: &schema::VirtualMachine, snapshot: Snapshot) -> Result<Plan> {
-    let vmx = vmx::plan(schema, snapshot.vmx)?;
-    let network = network::plan(&schema.network_adapters, snapshot.network)?;
-    let disk = disk::plan(&schema.disks, snapshot.disk)?;
-    let shared_folder = shared_folder::plan(&schema.shared_folders, snapshot.shared_folder)?;
-    let optical = optical::plan(&schema.optical_drives, snapshot.optical);
+fn plan(configured: &schema::VirtualMachine, snapshot: Snapshot) -> Result<Plan> {
+    let vmx = vmx::plan(configured, snapshot.vmx)?;
+    let network = network::plan(&configured.network_adapters, snapshot.network)?;
+    let disk = disk::plan(&configured.disks, snapshot.disk)?;
+    let shared_folder = shared_folder::plan(&configured.shared_folders, snapshot.shared_folder)?;
+    let optical = optical::plan(&configured.optical_drives, snapshot.optical);
 
     Ok(Plan {
         vmx,
@@ -170,10 +170,10 @@ fn ensure_stopped(vmx_path: &Path) -> Result<()> {
 
 pub(crate) fn apply(file: &Path) -> Result<()> {
     let contents = fs::read_to_string(file)?;
-    let schema = serde_json::from_str::<schema::VirtualMachine>(&contents)?;
+    let configured = serde_json::from_str::<schema::VirtualMachine>(&contents)?;
 
-    let snapshot = inspect(&schema)?;
-    let plan = plan(&schema, snapshot)?;
+    let snapshot = inspect(&configured)?;
+    let plan = plan(&configured, snapshot)?;
     let staged = stage(plan)?;
 
     commit(staged)
@@ -219,9 +219,9 @@ mod tests {
     }
 
     fn inspect_ir(ir: &serde_json::Value) -> Result<Snapshot> {
-        let schema = serde_json::from_value::<VirtualMachine>(ir.clone())?;
+        let configured = serde_json::from_value::<VirtualMachine>(ir.clone())?;
 
-        inspect(&schema)
+        inspect(&configured)
     }
 
     #[test]

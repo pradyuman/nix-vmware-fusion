@@ -10,17 +10,17 @@ const MANAGED_KEYS: [&str; 7] = [
     "sound.pciSlotNumber",
 ];
 
-pub(super) fn plan(sound: Option<&SoundCard>) -> Vec<Action> {
-    sound.map_or_else(
+pub(super) fn plan(configured: Option<&SoundCard>) -> Vec<Action> {
+    configured.map_or_else(
         || MANAGED_KEYS.into_iter().map(Action::Remove).collect(),
-        |sound| {
+        |configured| {
             vec![
                 Action::Set("sound.present", "TRUE".to_owned()),
                 Action::Set("sound.virtualDev", "hdaudio".to_owned()),
                 Action::Set("sound.autoDetect", "TRUE".to_owned()),
                 Action::Set("sound.fileName", "-1".to_owned()),
-                boolean("sound.startConnected", sound.start_connected, true),
-                boolean("sound.enableAEC", sound.echo_cancellation, false),
+                boolean("sound.startConnected", configured.start_connected, true),
+                boolean("sound.enableAEC", configured.echo_cancellation, false),
             ]
         },
     )
