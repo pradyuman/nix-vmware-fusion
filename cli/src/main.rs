@@ -57,8 +57,11 @@ enum NetworkCommands {
 
 #[derive(Subcommand)]
 enum VmCommands {
-    /// Apply a virtual machine configuration from a JSON file
-    Apply { file: PathBuf },
+    /// Apply virtual machine configurations from JSON files
+    Apply {
+        #[arg(required = true)]
+        files: Vec<PathBuf>,
+    },
 }
 
 fn main() -> Result<ExitCode> {
@@ -70,9 +73,9 @@ fn main() -> Result<ExitCode> {
             Ok(ExitCode::SUCCESS)
         }
         Commands::Vm {
-            command: VmCommands::Apply { file },
+            command: VmCommands::Apply { files },
         } => {
-            vm::apply(&file)?;
+            vm::apply_all(&files)?;
             Ok(ExitCode::SUCCESS)
         }
         Commands::Install { dmg } => script::run(

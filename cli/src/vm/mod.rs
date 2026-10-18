@@ -1,5 +1,5 @@
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, ensure};
 
@@ -169,7 +169,28 @@ fn ensure_stopped(vmx_path: &Path) -> Result<()> {
 
 // Apply
 
-pub(crate) fn apply(file: &Path) -> Result<()> {
+// Apply every configuration before failing so one virtual machine cannot block the others
+pub(crate) fn apply_all(files: &[PathBuf]) -> Result<()> {
+    let failures = files
+        .iter()
+        .filter_map(|file| {
+            apply(file)
+                .with_context(|| format!("could not apply {}", file.display()))
+                .err()
+        })
+        .inspect(|error| eprintln!("Error: {error:#}"))
+        .count();
+
+    ensure!(
+        failures == 0,
+        "could not apply {failures} of {} virtual machine configurations",
+        files.len()
+    );
+
+    Ok(())
+}
+
+fn apply(file: &Path) -> Result<()> {
     let contents = fs::read_to_string(file)?;
     let configured = serde_json::from_str::<schema::VirtualMachine>(&contents)?;
 

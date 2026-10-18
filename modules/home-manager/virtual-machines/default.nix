@@ -141,9 +141,7 @@ in
 
     home.activation.vmwareFusionVirtualMachines = lib.mkIf (irFiles != { }) (
       lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-        ${lib.concatMapAttrsStringSep "\n" (
-          _: irFile: "run ${lib.getExe localPkgs.cli} vm apply ${lib.escapeShellArg irFile}"
-        ) irFiles}
+        run ${lib.getExe localPkgs.cli} vm apply ${lib.escapeShellArgs (lib.attrValues irFiles)}
       ''
     );
   };
