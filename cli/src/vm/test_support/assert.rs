@@ -23,6 +23,10 @@ pub(crate) fn vmx_entry_absent(path: &Path, key: &str) -> Result<()> {
     Ok(())
 }
 
+pub(crate) fn vmx_entries_absent(path: &Path, keys: &[&str]) -> Result<()> {
+    keys.iter().try_for_each(|key| vmx_entry_absent(path, key))
+}
+
 pub(crate) fn plist_integer(path: &Path, key: &str, value: u8) -> Result<()> {
     let plist = plist::Value::from_file(path)?;
     let entry = plist
