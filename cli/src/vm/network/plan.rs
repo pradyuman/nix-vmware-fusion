@@ -125,7 +125,7 @@ fn validate_adapter(name: &str, adapter: &NetworkAdapter) -> Result<()> {
 fn first_free_label(occupied_labels: &HashSet<NetworkAdapterLabel>) -> Result<NetworkAdapterLabel> {
     // VMware Fusion supports up to ten adapters, labeled ethernet0 through ethernet9.
     (0..10)
-        .map(|index| format!("ethernet{index}"))
+        .map(|index| NetworkAdapterLabel::new(format!("ethernet{index}")))
         .find(|label| !occupied_labels.contains(label))
         .context("virtual machine already has the maximum of ten network adapters")
 }
@@ -160,7 +160,7 @@ mod tests {
 
     fn network_attachment(label: &str, name: &str, mode: &str) -> NetworkAttachment {
         NetworkAttachment {
-            label: label.to_owned(),
+            label: NetworkAdapterLabel::new(label),
             external_id: external_id(name),
             mode: mode.to_owned(),
             vmnet: String::new(),
@@ -203,7 +203,7 @@ mod tests {
                 label,
                 name,
                 adapter,
-            }] if label == "ethernet0"
+            }] if label.as_ref() == "ethernet0"
                 && name == "primary"
                 && adapter.mode == NetworkMode::HostOnly
         ));
@@ -230,7 +230,7 @@ mod tests {
         assert!(matches!(
             plan.actions.as_slice(),
             [Action::Configure { label, name, .. }]
-                if label == "ethernet0" && name == "primary"
+                if label.as_ref() == "ethernet0" && name == "primary"
         ));
 
         Ok(())
@@ -248,7 +248,7 @@ mod tests {
         assert!(matches!(
             plan.actions.as_slice(),
             [Action::Configure { label, name, .. }]
-                if label == "ethernet0" && name == "primary"
+                if label.as_ref() == "ethernet0" && name == "primary"
         ));
 
         Ok(())
@@ -269,7 +269,7 @@ mod tests {
         assert!(matches!(
             plan.actions.as_slice(),
             [Action::Configure { label, name, .. }]
-                if label == "ethernet0" && name == "primary"
+                if label.as_ref() == "ethernet0" && name == "primary"
         ));
 
         Ok(())
@@ -286,7 +286,7 @@ mod tests {
 
         assert!(matches!(
             plan.actions.as_slice(),
-            [Action::Remove { label }] if label == "ethernet0"
+            [Action::Remove { label }] if label.as_ref() == "ethernet0"
         ));
 
         Ok(())

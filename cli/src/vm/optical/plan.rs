@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::HashMap;
 
 use super::{Action, OpticalAttachment, Plan, Snapshot};
 use crate::vm::schema::{OpticalDrive, OpticalDriveSource, OpticalDrives};
@@ -13,7 +13,7 @@ pub(crate) fn plan(configured: &OpticalDrives, snapshot: Snapshot) -> Plan {
     let attachments = optical_attachments
         .into_iter()
         .map(|attachment| (attachment.label.clone(), attachment))
-        .collect::<BTreeMap<_, _>>();
+        .collect::<HashMap<_, _>>();
 
     let (optical_drives, removed_bindings) = state
         .optical_drives
@@ -70,6 +70,7 @@ mod tests {
     use std::path::{Path, PathBuf};
 
     use super::*;
+    use crate::vm::optical::OpticalDriveLabel;
     use crate::vm::schema::OpticalImagePath;
     use crate::vm::state::OpticalDriveBinding;
 
@@ -84,7 +85,7 @@ mod tests {
 
     fn image_attachment(label: &str, path: &str) -> OpticalAttachment {
         OpticalAttachment {
-            label: label.to_owned(),
+            label: OpticalDriveLabel::new(label),
             backing_type: Some("cdrom_image".to_owned()),
             backing_path: Some(path.into()),
             client_device: false,
@@ -97,7 +98,7 @@ mod tests {
         state.optical_drives.insert(
             name.to_owned(),
             OpticalDriveBinding {
-                label: label.to_owned(),
+                label: OpticalDriveLabel::new(label),
             },
         );
 
@@ -106,7 +107,7 @@ mod tests {
 
     fn managed_snapshot(name: &str, attachment: OpticalAttachment) -> Snapshot {
         Snapshot {
-            state: managed_state(name, &attachment.label),
+            state: managed_state(name, attachment.label.as_ref()),
             optical_attachments: vec![attachment],
         }
     }
@@ -125,7 +126,8 @@ mod tests {
                 .optical_drives
                 .get("installer")
                 .expect("retained installer binding")
-                .label,
+                .label
+                .as_ref(),
             "sata0:0"
         );
     }
@@ -159,7 +161,7 @@ mod tests {
                 label: Some(label),
                 drive,
             }] if name == "installer"
-                && label == "sata0:0"
+                && label.as_ref() == "sata0:0"
                 && matches!(
                     &drive.source,
                     OpticalDriveSource::Image { path }
@@ -202,7 +204,7 @@ mod tests {
                 name,
                 label: Some(label),
                 ..
-            }] if name == "installer" && label == "sata0:0"
+            }] if name == "installer" && label.as_ref() == "sata0:0"
         ));
     }
 
@@ -217,7 +219,7 @@ mod tests {
 
         assert!(matches!(
             plan.actions.as_slice(),
-            [Action::Detach { label }] if label == "sata0:0"
+            [Action::Detach { label }] if label.as_ref() == "sata0:0"
         ));
         assert!(plan.state.optical_drives.is_empty());
     }

@@ -3,7 +3,7 @@ use std::path::Path;
 
 use anyhow::{Context, Result, ensure};
 
-use super::{Action, Plan};
+use super::{Action, Plan, SharedFolderLabel};
 use crate::vm::schema::SharedFolder;
 use crate::vm::vmcli;
 
@@ -24,7 +24,12 @@ pub(crate) fn stage(draft_path: &Path, plan: Plan) -> Result<()> {
         })
 }
 
-fn configure(path: &Path, label: &str, name: &str, folder: &SharedFolder) -> Result<()> {
+fn configure(
+    path: &Path,
+    label: &SharedFolderLabel,
+    name: &str,
+    folder: &SharedFolder,
+) -> Result<()> {
     let host_path = folder.host_path.as_ref();
     let metadata = fs::metadata(host_path)
         .with_context(|| format!("could not inspect shared folder {}", host_path.display()))?;
@@ -74,7 +79,7 @@ mod tests {
             &vmx_path,
             Plan {
                 actions: vec![Action::Configure {
-                    label: label.to_owned(),
+                    label: SharedFolderLabel::new(label),
                     name: name.to_owned(),
                     folder: SharedFolder {
                         host_path: SharedFolderPath::try_new(projects_path.clone()).unwrap(),
@@ -88,7 +93,7 @@ mod tests {
         assert_eq!(snapshot.shared_folders.len(), 1);
 
         let folder = &snapshot.shared_folders[0];
-        assert_eq!(folder.label, label);
+        assert_eq!(folder.label.as_ref(), label);
         assert_eq!(folder.guest_name, name);
         assert_eq!(folder.host_path, projects_path);
         assert!(folder.present);
@@ -101,7 +106,7 @@ mod tests {
             &vmx_path,
             Plan {
                 actions: vec![Action::Configure {
-                    label: label.to_owned(),
+                    label: SharedFolderLabel::new(label),
                     name: name.to_owned(),
                     folder: SharedFolder {
                         host_path: SharedFolderPath::try_new(downloads_path.clone()).unwrap(),
@@ -124,7 +129,7 @@ mod tests {
             &vmx_path,
             Plan {
                 actions: vec![Action::Remove {
-                    label: label.to_owned(),
+                    label: SharedFolderLabel::new(label),
                 }],
             },
         )?;

@@ -1,5 +1,7 @@
 use std::path::PathBuf;
 
+use nutype::nutype;
+
 mod inspect;
 pub(super) use inspect::inspect;
 
@@ -11,7 +13,8 @@ pub(super) use stage::stage;
 
 use crate::vm::schema::SharedFolder;
 
-type SharedFolderLabel = String;
+#[nutype(derive(Clone, Debug, Deserialize, AsRef, Display, Eq, PartialEq, Hash))]
+struct SharedFolderLabel(String);
 
 // Inspect
 

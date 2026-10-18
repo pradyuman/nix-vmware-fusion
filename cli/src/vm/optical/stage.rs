@@ -2,7 +2,7 @@ use std::path::Path;
 
 use anyhow::{Context, Result};
 
-use super::{Action, Plan, StagedChange};
+use super::{Action, OpticalDriveLabel, Plan, StagedChange};
 use crate::vm::schema::{OpticalDrive, OpticalDriveSource};
 use crate::vm::state::OpticalDriveBinding;
 use crate::vm::vmcli;
@@ -32,7 +32,7 @@ pub(crate) fn stage(draft_path: &Path, plan: Plan) -> Result<StagedChange> {
     Ok(StagedChange { state })
 }
 
-fn configure(path: &Path, label: &str, drive: &OpticalDrive) -> Result<()> {
+fn configure(path: &Path, label: &OpticalDriveLabel, drive: &OpticalDrive) -> Result<()> {
     match &drive.source {
         OpticalDriveSource::Image { path: image_path } => {
             vmcli::set_backing_info(path, label, "cdrom_image", image_path.as_ref(), false)?;

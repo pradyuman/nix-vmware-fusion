@@ -2,7 +2,7 @@ use std::path::Path;
 
 use anyhow::{Context, Result};
 
-use super::{Action, Plan, external_id};
+use super::{Action, NetworkAdapterLabel, Plan, external_id};
 use crate::vm::schema::{NetworkAdapter, NetworkMode};
 use crate::vm::vmcli;
 
@@ -21,7 +21,12 @@ pub(crate) fn stage(draft_path: &Path, plan: Plan) -> Result<()> {
         })
 }
 
-fn configure(path: &Path, label: &str, name: &str, adapter: &NetworkAdapter) -> Result<()> {
+fn configure(
+    path: &Path,
+    label: &NetworkAdapterLabel,
+    name: &str,
+    adapter: &NetworkAdapter,
+) -> Result<()> {
     vmcli::run(path, "ethernet", "setpresent", label, "true")?;
     vmcli::run(
         path,
@@ -75,7 +80,7 @@ mod tests {
             &vmx_path,
             Plan {
                 actions: vec![Action::Configure {
-                    label: label.to_owned(),
+                    label: NetworkAdapterLabel::new(label),
                     name: name.to_owned(),
                     adapter: NetworkAdapter {
                         mode: NetworkMode::Custom,
@@ -91,7 +96,7 @@ mod tests {
         assert_eq!(snapshot.network_attachments.len(), 1);
 
         let attachment = &snapshot.network_attachments[0];
-        assert_eq!(attachment.label, label);
+        assert_eq!(attachment.label.as_ref(), label);
         assert_eq!(attachment.external_id, external_id(name));
         assert_eq!(attachment.mode, "custom");
         assert_eq!(attachment.vmnet, "vmnet2");
@@ -102,7 +107,7 @@ mod tests {
             &vmx_path,
             Plan {
                 actions: vec![Action::Remove {
-                    label: label.to_owned(),
+                    label: NetworkAdapterLabel::new(label),
                 }],
             },
         )?;

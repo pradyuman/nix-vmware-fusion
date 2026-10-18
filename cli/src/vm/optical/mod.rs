@@ -1,5 +1,7 @@
 use std::path::PathBuf;
 
+use nutype::nutype;
+
 use super::state::State;
 use crate::vm::schema::OpticalDrive;
 
@@ -14,7 +16,18 @@ pub(super) use plan::plan;
 mod stage;
 pub(super) use stage::stage;
 
-pub(super) type OpticalDriveLabel = String;
+#[nutype(derive(
+    Clone,
+    Debug,
+    Serialize,
+    Deserialize,
+    AsRef,
+    Display,
+    Eq,
+    PartialEq,
+    Hash
+))]
+pub(super) struct OpticalDriveLabel(String);
 
 // Inspect
 

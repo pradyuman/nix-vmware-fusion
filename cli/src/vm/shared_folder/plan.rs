@@ -113,7 +113,7 @@ impl PlanningState {
 
 fn first_free_label(occupied_labels: &HashSet<SharedFolderLabel>) -> SharedFolderLabel {
     (0..)
-        .map(|index| format!("sharedFolder{index}"))
+        .map(|index| SharedFolderLabel::new(format!("sharedFolder{index}")))
         .find(|label| !occupied_labels.contains(label))
         .expect("finite shared folders leave a free label")
 }
@@ -145,7 +145,7 @@ mod tests {
 
     fn observed_folder(label: &str, name: &str, path: &str) -> ObservedSharedFolder {
         ObservedSharedFolder {
-            label: label.to_owned(),
+            label: SharedFolderLabel::new(label),
             guest_name: name.to_owned(),
             host_path: path.into(),
             present: true,
@@ -184,7 +184,7 @@ mod tests {
                 label,
                 name,
                 folder,
-            }] if label == "sharedFolder0"
+            }] if label.as_ref() == "sharedFolder0"
                 && name == "projects"
                 && folder.host_path.as_ref() == std::path::Path::new(path)
                 && folder.read_only
@@ -205,7 +205,7 @@ mod tests {
         assert!(matches!(
             plan.actions.as_slice(),
             [Action::Configure { label, name, .. }]
-                if label == "sharedFolder0" && name == "projects"
+                if label.as_ref() == "sharedFolder0" && name == "projects"
         ));
 
         Ok(())
@@ -227,7 +227,7 @@ mod tests {
         assert!(matches!(
             plan.actions.as_slice(),
             [Action::Configure { label, name, .. }]
-                if label == "sharedFolder0" && name == "projects"
+                if label.as_ref() == "sharedFolder0" && name == "projects"
         ));
 
         Ok(())
@@ -247,7 +247,7 @@ mod tests {
 
         assert!(matches!(
             plan.actions.as_slice(),
-            [Action::Remove { label }] if label == "sharedFolder0"
+            [Action::Remove { label }] if label.as_ref() == "sharedFolder0"
         ));
 
         Ok(())

@@ -263,7 +263,7 @@ mod tests {
         let disk_attachments = &snapshot.disk.disk_attachments;
 
         assert_eq!(network_attachments.len(), 1);
-        assert_eq!(network_attachments[0].label, "ethernet0");
+        assert_eq!(network_attachments[0].label.as_ref(), "ethernet0");
         assert_eq!(
             network_attachments[0].external_id,
             "nix-vmware-fusion:primary"

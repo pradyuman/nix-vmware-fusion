@@ -82,7 +82,7 @@ mod tests {
         let attachments = query_network_attachments(&vmx_path)?;
 
         assert_eq!(attachments.len(), 1);
-        assert_eq!(attachments[0].label, "ethernet0");
+        assert_eq!(attachments[0].label.as_ref(), "ethernet0");
         assert_eq!(attachments[0].external_id, "nix-vmware-fusion:primary");
         assert_eq!(attachments[0].mode, "custom");
         assert_eq!(attachments[0].vmnet, "vmnet2");

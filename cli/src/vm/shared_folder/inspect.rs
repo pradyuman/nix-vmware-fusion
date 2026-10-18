@@ -87,7 +87,7 @@ mod tests {
         assert_eq!(snapshot.shared_folders.len(), 1);
 
         let folder = &snapshot.shared_folders[0];
-        assert_eq!(folder.label, label);
+        assert_eq!(folder.label.as_ref(), label);
         assert_eq!(folder.guest_name, "projects");
         assert_eq!(folder.host_path, host_path);
         assert!(folder.present);

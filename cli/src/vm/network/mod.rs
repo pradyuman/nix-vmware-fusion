@@ -1,3 +1,5 @@
+use nutype::nutype;
+
 use crate::vm::schema::{NetworkAdapter, NetworkAdapterModel, NetworkMode};
 
 mod inspect;
@@ -9,7 +11,8 @@ pub(super) use plan::plan;
 mod stage;
 pub(super) use stage::stage;
 
-type NetworkAdapterLabel = String;
+#[nutype(derive(Clone, Debug, Deserialize, AsRef, Display, Eq, PartialEq, Hash))]
+struct NetworkAdapterLabel(String);
 
 // Inspect
 

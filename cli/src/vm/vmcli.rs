@@ -18,9 +18,11 @@ pub(super) fn run(
     vmx_path: &Path,
     module: &str,
     command: &str,
-    label: &str,
+    label: impl AsRef<str>,
     value: impl Into<OsString>,
 ) -> Result<()> {
+    let label = label.as_ref();
+
     duct::cmd!(&CONFIG.vmcli, vmx_path, module, command, label, value)
         .run()
         .with_context(|| format!("could not run vmcli {module} {command} for {label}"))?;
@@ -44,7 +46,9 @@ pub(super) fn query<T: DeserializeOwned>(vmx_path: &Path, module: &str) -> Resul
 }
 
 // Remove every VMX entry belonging to the device identified by `label`
-pub(super) fn purge(vmx_path: &Path, module: &str, label: &str) -> Result<()> {
+pub(super) fn purge(vmx_path: &Path, module: &str, label: impl AsRef<str>) -> Result<()> {
+    let label = label.as_ref();
+
     duct::cmd!(&CONFIG.vmcli, vmx_path, module, "purge", label)
         .run()
         .with_context(|| format!("could not run vmcli {module} purge for {label}"))?;
@@ -54,11 +58,13 @@ pub(super) fn purge(vmx_path: &Path, module: &str, label: &str) -> Result<()> {
 
 pub(super) fn set_backing_info(
     vmx_path: &Path,
-    label: &str,
+    label: impl AsRef<str>,
     backing_type: &str,
     backing_path: impl Into<OsString>,
     client_device: bool,
 ) -> Result<()> {
+    let label = label.as_ref();
+
     duct::cmd!(
         &CONFIG.vmcli,
         vmx_path,
@@ -75,7 +81,9 @@ pub(super) fn set_backing_info(
     Ok(())
 }
 
-pub(super) fn set_custom_vmnet(vmx_path: &Path, label: &str, vmnet: &str) -> Result<()> {
+pub(super) fn set_custom_vmnet(vmx_path: &Path, label: impl AsRef<str>, vmnet: &str) -> Result<()> {
+    let label = label.as_ref();
+
     duct::cmd!(
         &CONFIG.vmcli,
         vmx_path,

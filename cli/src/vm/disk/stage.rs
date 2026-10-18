@@ -18,7 +18,7 @@ pub(crate) fn stage(draft_path: &Path, plan: Plan) -> Result<StagedChange> {
                 Action::Move { from, to } => {
                     let target = prepare_free_label(draft_path, to)?;
 
-                    vmcli::run(draft_path, "disk", "move", from.as_ref(), target.as_ref())
+                    vmcli::run(draft_path, "disk", "move", &from, target.as_ref())
                         .with_context(|| format!("could not move disk {from} to {target}"))?;
 
                     None
@@ -27,16 +27,14 @@ pub(crate) fn stage(draft_path: &Path, plan: Plan) -> Result<StagedChange> {
                     let label = prepare_free_label(draft_path, to)?;
 
                     // Configure the backing file before making the device present
-                    vmcli::set_backing_info(draft_path, label.as_ref(), "disk", &path, false)
-                        .and_then(|()| {
-                            vmcli::run(draft_path, "disk", "setpresent", label.as_ref(), "true")
-                        })
+                    vmcli::set_backing_info(draft_path, &label, "disk", &path, false)
+                        .and_then(|()| vmcli::run(draft_path, "disk", "setpresent", &label, "true"))
                         .with_context(|| format!("could not attach disk {}", path.display()))?;
 
                     None
                 }
                 Action::Detach { label } => {
-                    vmcli::purge(draft_path, "disk", label.as_ref())
+                    vmcli::purge(draft_path, "disk", &label)
                         .with_context(|| format!("could not detach disk {label}"))?;
 
                     None

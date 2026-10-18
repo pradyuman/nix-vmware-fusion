@@ -89,7 +89,7 @@ mod tests {
         let attachments = query_optical_attachments(&vmx_path)?;
 
         assert_eq!(attachments.len(), 1);
-        assert_eq!(attachments[0].label, label);
+        assert_eq!(attachments[0].label.as_ref(), label);
         assert_eq!(attachments[0].backing_type.as_deref(), Some("cdrom_image"));
         assert_eq!(
             attachments[0].backing_path.as_deref(),
@@ -113,7 +113,7 @@ mod tests {
         let attachments = query_optical_attachments(&vmx_path)?;
 
         assert_eq!(attachments.len(), 1);
-        assert_eq!(attachments[0].label, label);
+        assert_eq!(attachments[0].label.as_ref(), label);
         assert_eq!(attachments[0].backing_type.as_deref(), Some("cdrom_raw"));
         assert_eq!(
             attachments[0].backing_path.as_deref(),
