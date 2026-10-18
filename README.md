@@ -24,6 +24,9 @@ explain these steps.
 
 #### With nix-darwin
 
+If you want to install VMware Fusion yourself, set
+`programs.vmware-fusion.package = null` and skip the next step.
+
 Add the DMG to the Nix store:
 
 ```sh

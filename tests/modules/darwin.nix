@@ -52,6 +52,10 @@ let
       hostAdapter.enable = true;
     };
   };
+  selfManagedSystem = mkSystem {
+    enable = true;
+    package = null;
+  };
   uninstallingSystem = mkSystem { onActivation.cleanup = "uninstall"; };
   purgingSystem = mkSystem { onActivation.cleanup = "purge"; };
 
@@ -61,6 +65,7 @@ let
 
   enabledActivation = enabledSystem.config.system.activationScripts.postActivation.text;
   networkedActivation = networkedSystem.config.system.activationScripts.postActivation.text;
+  selfManagedActivation = selfManagedSystem.config.system.activationScripts.postActivation.text;
   uninstallingActivation = uninstallingSystem.config.system.activationScripts.postActivation.text;
   purgingActivation = purgingSystem.config.system.activationScripts.postActivation.text;
 
@@ -89,9 +94,19 @@ in
     expected = true;
   };
 
-  testNetworkReconciliationAlwaysRuns = {
+  testSelfManagedInstallSkipsInstaller = {
     expr =
-      lib.hasInfix "network apply" enabledActivation && lib.hasInfix "network apply" networkedActivation;
+      lib.hasInfix "Print :CFBundleVersion" selfManagedActivation
+      || lib.hasInfix "/bin/nix-vmware-fusion install" selfManagedActivation;
+    expected = false;
+  };
+
+  testNetworkReconciliationAlwaysRuns = {
+    expr = lib.all (lib.hasInfix "network apply") [
+      enabledActivation
+      networkedActivation
+      selfManagedActivation
+    ];
     expected = true;
   };
 

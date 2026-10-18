@@ -9,6 +9,21 @@ let
   cfg = config.programs.vmware-fusion;
   localPkgs = import ../pkgs { inherit pkgs; };
 
+  # Read the build inside the DMG so activation only installs when the installed build differs
+  dmgBuild =
+    pkgs.runCommand "vmware-fusion-dmg-build"
+      {
+        nativeBuildInputs = [
+          pkgs._7zz
+          pkgs.jq
+          pkgs.libplist
+        ];
+      }
+      ''
+        7zz e -y ${cfg.package} "*/VMware Fusion.app/Contents/Info.plist" >/dev/null
+        plistutil -i Info.plist -f json | jq -er .CFBundleVersion > "$out"
+      '';
+
   toggleType = lib.types.submodule {
     options.enable = lib.mkOption {
       type = lib.types.bool;
@@ -62,6 +77,16 @@ in
   options.programs.vmware-fusion = {
     enable = lib.mkEnableOption "VMware Fusion";
 
+    package = lib.mkOption {
+      type = lib.types.nullOr lib.types.package;
+      default = localPkgs.dmg;
+      defaultText = lib.literalMD "the pinned VMware Fusion ${localPkgs.dmg.version} (build ${localPkgs.dmg.build}) DMG";
+      description = ''
+        The VMware Fusion DMG to use, or `null` to manage the installation
+        yourself.
+      '';
+    };
+
     networking.networks = lib.mkOption {
       type = lib.types.attrsOf networkType;
       default = { };
@@ -103,10 +128,8 @@ in
   };
 
   config = lib.mkMerge [
-    (lib.mkIf (cfg.enable || cfg.onActivation.cleanup != "none") {
-      nixpkgs.config.allowUnfreePackages = [ "vmware-fusion-dmg" ];
-    })
     (lib.mkIf cfg.enable {
+      nixpkgs.config.allowUnfreePackages = [ "vmware-fusion-dmg" ];
 
       assertions = [
         {
@@ -120,23 +143,27 @@ in
         localPkgs.cli
       ];
 
-      system.activationScripts.postActivation.text = lib.mkAfter ''
-        target_app="/Applications/VMware Fusion.app"
-        info_plist="$target_app/Contents/Info.plist"
-        installed_build=""
+      system.activationScripts.postActivation.text = lib.mkAfter (
+        lib.optionalString (cfg.package != null) ''
+          target_app="/Applications/VMware Fusion.app"
+          info_plist="$target_app/Contents/Info.plist"
+          installed_build=""
 
-        if [[ -f "$info_plist" ]]; then
-          installed_build="$(
-            /usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$info_plist" 2>/dev/null || true
-          )"
-        fi
+          if [[ -f "$info_plist" ]]; then
+            installed_build="$(
+              /usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$info_plist" 2>/dev/null || true
+            )"
+          fi
 
-        if [[ "$installed_build" != "${localPkgs.dmg.build}" ]]; then
-          ${lib.getExe localPkgs.cli} install ${lib.escapeShellArg localPkgs.dmg}
-        fi
+          if [[ "$installed_build" != "$(cat ${dmgBuild})" ]]; then
+            ${lib.getExe localPkgs.cli} install ${lib.escapeShellArg cfg.package}
+          fi
 
-        ${lib.getExe localPkgs.cli} network apply ${lib.escapeShellArg networkConfiguration}
-      '';
+        ''
+        + ''
+          ${lib.getExe localPkgs.cli} network apply ${lib.escapeShellArg networkConfiguration}
+        ''
+      );
     })
 
     (lib.mkIf (!cfg.enable && cfg.onActivation.cleanup == "uninstall") {
