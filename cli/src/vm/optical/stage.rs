@@ -1,111 +1,53 @@
-use std::ffi::OsStr;
 use std::path::Path;
 
 use anyhow::{Context, Result};
-use serde::Deserialize;
 
-use crate::config::CONFIG;
 use crate::vm::schema::{OpticalDrive, OpticalDriveSource};
 use crate::vm::state::OpticalDriveBinding;
+use crate::vm::vmcli;
 
-use super::{Action, OpticalDriveLabel, Plan, StagedChange};
-
-#[derive(Deserialize)]
-struct FreeOpticalDriveLabel {
-    #[serde(rename = "FindFirstFree")]
-    label: OpticalDriveLabel,
-}
+use super::{Action, Plan, StagedChange};
 
 pub(crate) fn stage(draft_path: &Path, plan: Plan) -> Result<StagedChange> {
     let Plan { mut state, actions } = plan;
 
     actions.into_iter().try_for_each(|action| match action {
         Action::Configure { name, label, drive } => {
-            enable_sata_controller(draft_path)?;
+            vmcli::enable_controller(draft_path, "sata", "sata0")?;
 
-            let label = label.map_or_else(|| find_first_free_label(draft_path), Ok)?;
+            let label =
+                label.map_or_else(|| vmcli::find_first_free(draft_path, "sata", "sata0"), Ok)?;
 
-            configure(draft_path, &label, &drive)?;
+            configure(draft_path, &label, &drive)
+                .with_context(|| format!("could not configure optical drive {label}"))?;
             state
                 .optical_drives
                 .insert(name, OpticalDriveBinding { label });
 
             Ok(())
         }
-        Action::Detach { label } => duct::cmd!(&CONFIG.vmcli, draft_path, "disk", "purge", &label)
-            .run()
-            .with_context(|| format!("could not detach optical drive {label}"))
-            .map(|_| ()),
+        Action::Detach { label } => vmcli::purge(draft_path, "disk", &label)
+            .with_context(|| format!("could not detach optical drive {label}")),
     })?;
 
     Ok(StagedChange { state })
 }
 
-fn enable_sata_controller(path: &Path) -> Result<()> {
-    duct::cmd!(&CONFIG.vmcli, path, "sata", "setpresent", "sata0", "true")
-        .run()
-        .context("could not enable sata0")?;
-
-    Ok(())
-}
-
-fn find_first_free_label(path: &Path) -> Result<OpticalDriveLabel> {
-    let json = duct::cmd!(
-        &CONFIG.vmcli,
-        path,
-        "sata",
-        "findfirstfree",
-        "sata0",
-        "-f",
-        "json"
-    )
-    .read()
-    .context("could not find a free optical drive label")?;
-
-    Ok(serde_json::from_str::<FreeOpticalDriveLabel>(&json)
-        .context("could not parse vmcli optical drive label JSON")?
-        .label)
-}
-
 fn configure(path: &Path, label: &str, drive: &OpticalDrive) -> Result<()> {
     match &drive.source {
         OpticalDriveSource::Image { path: image_path } => {
-            set_backing_info(path, label, image_path.as_ref())?;
+            vmcli::set_backing_info(path, label, "cdrom_image", image_path.as_ref(), false)?;
         }
     }
 
-    set(
-        path,
-        label,
-        "setstartconnected",
-        drive.start_connected.to_string(),
-    )?;
-    set(path, label, "setpresent", "true")?;
-
-    Ok(())
-}
-
-fn set_backing_info(path: &Path, label: &str, image_path: &Path) -> Result<()> {
-    duct::cmd!(
-        &CONFIG.vmcli,
+    vmcli::run(
         path,
         "disk",
-        "setbackinginfo",
+        "setstartconnected",
         label,
-        "cdrom_image",
-        image_path,
-        "false"
-    )
-    .run()
-    .with_context(|| format!("could not configure backing for optical drive {label}"))?;
-
-    Ok(())
-}
-
-fn set(path: &Path, label: &str, command: &str, value: impl AsRef<OsStr>) -> Result<()> {
-    duct::cmd!(&CONFIG.vmcli, path, "disk", command, label, value.as_ref())
-        .run()
-        .with_context(|| format!("could not run {command} for optical drive {label}"))?;
+        drive.start_connected.to_string(),
+    )?;
+    vmcli::run(path, "disk", "setpresent", label, "true")?;
 
     Ok(())
 }

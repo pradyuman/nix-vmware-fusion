@@ -11,7 +11,7 @@ mod stage;
 pub(super) use stage::stage;
 
 #[cfg(all(test, feature = "vmware-tests"))]
-pub(super) use stage::create;
+pub(super) use stage::set_entry;
 
 // Inspect
 

@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 
 use crate::config::CONFIG;
 use crate::vm::schema::VirtualDisks;
+use crate::vm::vmcli;
 
 use super::{DiskAttachment, DiskFormat, DiskImage, DiskLabel, DiskState, Snapshot};
 
@@ -94,12 +95,8 @@ fn query_disk_attachments(vmx_path: &Path) -> Result<Vec<DiskAttachment>> {
     }
 
     // Query the real VMX so vmcli resolves relative backing paths against its bundle
-    let json = duct::cmd!(&CONFIG.vmcli, vmx_path, "disk", "query", "-f", "json")
-        .read()
+    let parsed = vmcli::query::<VmcliDiskQuery>(vmx_path, "disk")
         .context("could not query attached disks")?;
-
-    let parsed =
-        serde_json::from_str::<VmcliDiskQuery>(&json).context("could not parse vmcli disk JSON")?;
 
     parsed
         .disks

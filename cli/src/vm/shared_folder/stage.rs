@@ -1,11 +1,10 @@
-use std::ffi::OsStr;
 use std::fs;
 use std::path::Path;
 
 use anyhow::{Context, Result, ensure};
 
-use crate::config::CONFIG;
 use crate::vm::schema::SharedFolder;
+use crate::vm::vmcli;
 
 use super::{Action, Plan};
 
@@ -17,8 +16,12 @@ pub(crate) fn stage(draft_path: &Path, plan: Plan) -> Result<()> {
                 label,
                 name,
                 folder,
-            } => configure(draft_path, &label, &name, &folder),
-            Action::Remove { label } => set(draft_path, &label, "SetPresent", "false"),
+            } => configure(draft_path, &label, &name, &folder)
+                .with_context(|| format!("could not configure shared folder {label}")),
+            Action::Remove { label } => {
+                vmcli::run(draft_path, "HGFS", "SetPresent", &label, "false")
+                    .with_context(|| format!("could not remove shared folder {label}"))
+            }
         })
 }
 
@@ -33,25 +36,18 @@ fn configure(path: &Path, label: &str, name: &str, folder: &SharedFolder) -> Res
         host_path.display()
     );
 
-    set(path, label, "SetPresent", "true")?;
-    set(path, label, "SetGuestName", name)?;
-    set(path, label, "SetHostPath", host_path)?;
-    set(path, label, "SetReadAccess", "true")?;
-    set(
+    vmcli::run(path, "HGFS", "SetPresent", label, "true")?;
+    vmcli::run(path, "HGFS", "SetGuestName", label, name)?;
+    vmcli::run(path, "HGFS", "SetHostPath", label, host_path)?;
+    vmcli::run(path, "HGFS", "SetReadAccess", label, "true")?;
+    vmcli::run(
         path,
-        label,
+        "HGFS",
         "SetWriteAccess",
+        label,
         (!folder.read_only).to_string(),
     )?;
-    set(path, label, "SetEnabled", "true")?;
-
-    Ok(())
-}
-
-fn set(path: &Path, label: &str, command: &str, value: impl AsRef<OsStr>) -> Result<()> {
-    duct::cmd!(&CONFIG.vmcli, path, "HGFS", command, label, value.as_ref())
-        .run()
-        .with_context(|| format!("could not run {command} for shared folder {label}"))?;
+    vmcli::run(path, "HGFS", "SetEnabled", label, "true")?;
 
     Ok(())
 }

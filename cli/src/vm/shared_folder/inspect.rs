@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use anyhow::{Context, Result};
 use serde::Deserialize;
 
-use crate::config::CONFIG;
+use crate::vm::vmcli;
 
 use super::{ObservedSharedFolder, SharedFolderLabel, Snapshot};
 
@@ -35,16 +35,8 @@ fn query_shared_folders(vmx_path: &Path) -> Result<Vec<ObservedSharedFolder>> {
         return Ok(Vec::new());
     }
 
-    let output = duct::cmd!(&CONFIG.vmcli, vmx_path, "HGFS", "query", "-f", "json")
-        .read()
+    let query = vmcli::query::<VmcliSharedFolderQuery>(vmx_path, "HGFS")
         .context("could not query shared folders")?;
-
-    // vmcli prefixes an empty shared-folder response with a human-readable message
-    let json_start = output
-        .find('{')
-        .context("vmcli did not report shared folder JSON")?;
-    let query = serde_json::from_str::<VmcliSharedFolderQuery>(&output[json_start..])
-        .context("could not parse vmcli shared folder JSON")?;
 
     Ok(query
         .folders
@@ -63,31 +55,11 @@ fn query_shared_folders(vmx_path: &Path) -> Result<Vec<ObservedSharedFolder>> {
 
 #[cfg(all(test, feature = "vmware-tests"))]
 mod tests {
-    use std::ffi::OsStr;
     use std::fs;
 
     use crate::vm::test_support::create_vmx;
 
     use super::*;
-
-    fn set_shared_folder_property(
-        vmx_path: &Path,
-        command: &str,
-        label: &str,
-        value: impl AsRef<OsStr>,
-    ) -> Result<()> {
-        duct::cmd!(
-            &CONFIG.vmcli,
-            vmx_path,
-            "HGFS",
-            command,
-            label,
-            value.as_ref()
-        )
-        .run()?;
-
-        Ok(())
-    }
 
     #[test]
     fn vmcli_reports_no_shared_folders() -> Result<()> {
@@ -105,12 +77,12 @@ mod tests {
         let label = "sharedFolder0";
 
         fs::create_dir(&host_path)?;
-        set_shared_folder_property(&vmx_path, "SetPresent", label, "true")?;
-        set_shared_folder_property(&vmx_path, "SetGuestName", label, "projects")?;
-        set_shared_folder_property(&vmx_path, "SetHostPath", label, &host_path)?;
-        set_shared_folder_property(&vmx_path, "SetReadAccess", label, "true")?;
-        set_shared_folder_property(&vmx_path, "SetWriteAccess", label, "false")?;
-        set_shared_folder_property(&vmx_path, "SetEnabled", label, "true")?;
+        vmcli::run(&vmx_path, "HGFS", "SetPresent", label, "true")?;
+        vmcli::run(&vmx_path, "HGFS", "SetGuestName", label, "projects")?;
+        vmcli::run(&vmx_path, "HGFS", "SetHostPath", label, &host_path)?;
+        vmcli::run(&vmx_path, "HGFS", "SetReadAccess", label, "true")?;
+        vmcli::run(&vmx_path, "HGFS", "SetWriteAccess", label, "false")?;
+        vmcli::run(&vmx_path, "HGFS", "SetEnabled", label, "true")?;
 
         let snapshot = inspect(&vmx_path)?;
 

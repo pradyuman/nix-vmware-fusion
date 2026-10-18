@@ -2,8 +2,6 @@ use anyhow::{Context, Result};
 use std::fs;
 use std::path::Path;
 
-use crate::config::CONFIG;
-
 mod disk;
 mod network;
 mod optical;
@@ -11,6 +9,7 @@ mod plist;
 mod schema;
 mod shared_folder;
 mod state;
+mod vmcli;
 mod vmx;
 
 #[cfg(all(test, feature = "vmware-tests"))]
@@ -156,15 +155,7 @@ fn ensure_stopped(vmx_path: &Path) -> Result<()> {
     }
 
     let bundle_path = vmx_path.parent().context("missing VMX directory")?;
-    let power = duct::cmd!(&CONFIG.vmcli, vmx_path, "power", "query")
-        .read()
-        .context("could not query virtual machine power state")?;
-
-    let state = power
-        .lines()
-        .find_map(|line| line.strip_prefix("PowerState:"))
-        .map(str::trim)
-        .context("vmcli did not report a power state")?;
+    let state = vmcli::power_state(vmx_path)?;
 
     anyhow::ensure!(
         state == "off",
@@ -482,14 +473,7 @@ mod tests {
         assert::vmx_entry(&vmx_path, "sound.enableAEC", "TRUE")?;
 
         // Simulate the PCI slot number VMware Fusion assigns to a sound card
-        duct::cmd!(
-            &CONFIG.dict_tool,
-            "-q",
-            "set",
-            &vmx_path,
-            "sound.pciSlotNumber=515"
-        )
-        .run()?;
+        vmx::set_entry(&vmx_path, "sound.pciSlotNumber", "515")?;
 
         // Remove the sound card
         ir["sound"] = serde_json::Value::Null;
@@ -549,14 +533,7 @@ mod tests {
         assert::vmx_entry(&vmx_path, "usb.generic.pluginAction", "host")?;
 
         // Simulate the PCI slot number VMware Fusion assigns to the controller
-        duct::cmd!(
-            &CONFIG.dict_tool,
-            "-q",
-            "set",
-            &vmx_path,
-            "usb_xhci.pciSlotNumber=515"
-        )
-        .run()?;
+        vmx::set_entry(&vmx_path, "usb_xhci.pciSlotNumber", "515")?;
 
         // Remove the USB controller without removing VMware-owned entries
         ir["usb"] = serde_json::Value::Null;

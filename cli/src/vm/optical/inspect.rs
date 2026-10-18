@@ -2,8 +2,8 @@ use anyhow::{Context, Result};
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
 
-use crate::config::CONFIG;
 use crate::vm::state::State;
+use crate::vm::vmcli;
 
 use super::{OpticalAttachment, OpticalDriveLabel, Snapshot};
 
@@ -39,12 +39,8 @@ fn query_optical_attachments(vmx_path: &Path) -> Result<Vec<OpticalAttachment>> 
         return Ok(Vec::new());
     }
 
-    let json = duct::cmd!(&CONFIG.vmcli, vmx_path, "disk", "query", "-f", "json")
-        .read()
+    let query = vmcli::query::<VmcliOpticalQuery>(vmx_path, "disk")
         .context("could not query optical drives")?;
-
-    let query = serde_json::from_str::<VmcliOpticalQuery>(&json)
-        .context("could not parse vmcli optical drive JSON")?;
 
     Ok(query
         .cdroms
@@ -64,46 +60,11 @@ fn query_optical_attachments(vmx_path: &Path) -> Result<Vec<OpticalAttachment>> 
 
 #[cfg(all(test, feature = "vmware-tests"))]
 mod tests {
-    use std::ffi::OsStr;
     use std::fs;
 
     use crate::vm::test_support::create_vmx;
 
     use super::*;
-
-    fn set_controller_present(path: &Path) -> Result<()> {
-        duct::cmd!(&CONFIG.vmcli, path, "sata", "setpresent", "sata0", "true").run()?;
-
-        Ok(())
-    }
-
-    fn set_backing_info(
-        path: &Path,
-        label: &str,
-        backing_type: &str,
-        backing_path: impl AsRef<OsStr>,
-        client_device: bool,
-    ) -> Result<()> {
-        duct::cmd!(
-            &CONFIG.vmcli,
-            path,
-            "disk",
-            "setbackinginfo",
-            label,
-            backing_type,
-            backing_path.as_ref(),
-            client_device.to_string(),
-        )
-        .run()?;
-
-        Ok(())
-    }
-
-    fn set_drive_property(path: &Path, label: &str, command: &str, value: &str) -> Result<()> {
-        duct::cmd!(&CONFIG.vmcli, path, "disk", command, label, value).run()?;
-
-        Ok(())
-    }
 
     #[test]
     fn vmcli_reports_no_optical_attachments() -> Result<()> {
@@ -121,10 +82,10 @@ mod tests {
         let label = "sata0:0";
 
         fs::write(&image_path, [])?;
-        set_controller_present(&vmx_path)?;
-        set_backing_info(&vmx_path, label, "cdrom_image", &image_path, false)?;
-        set_drive_property(&vmx_path, label, "setstartconnected", "false")?;
-        set_drive_property(&vmx_path, label, "setpresent", "true")?;
+        vmcli::enable_controller(&vmx_path, "sata", "sata0")?;
+        vmcli::set_backing_info(&vmx_path, label, "cdrom_image", &image_path, false)?;
+        vmcli::run(&vmx_path, "disk", "setstartconnected", label, "false")?;
+        vmcli::run(&vmx_path, "disk", "setpresent", label, "true")?;
 
         let attachments = query_optical_attachments(&vmx_path)?;
 
@@ -146,9 +107,9 @@ mod tests {
         let (_temp_dir, vmx_path) = create_vmx()?;
         let label = "sata0:0";
 
-        set_controller_present(&vmx_path)?;
-        set_backing_info(&vmx_path, label, "cdrom_raw", "auto detect", true)?;
-        set_drive_property(&vmx_path, label, "setpresent", "true")?;
+        vmcli::enable_controller(&vmx_path, "sata", "sata0")?;
+        vmcli::set_backing_info(&vmx_path, label, "cdrom_raw", "auto detect", true)?;
+        vmcli::run(&vmx_path, "disk", "setpresent", label, "true")?;
 
         let attachments = query_optical_attachments(&vmx_path)?;
 

@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use serde::Deserialize;
 use std::path::Path;
 
-use crate::config::CONFIG;
+use crate::vm::vmcli;
 
 use super::{NetworkAdapterLabel, NetworkAttachment, Snapshot};
 
@@ -33,16 +33,8 @@ fn query_network_attachments(vmx_path: &Path) -> Result<Vec<NetworkAttachment>> 
         return Ok(Vec::new());
     }
 
-    let json = duct::cmd!(&CONFIG.vmcli, vmx_path, "ethernet", "query", "-f", "json")
-        .read()
+    let query = vmcli::query::<VmcliNetworkQuery>(vmx_path, "ethernet")
         .context("could not query network adapters")?;
-
-    // vmcli prefixes an empty device response with a human-readable message
-    let json_start = json
-        .find('{')
-        .context("vmcli did not report network adapter JSON")?;
-    let query = serde_json::from_str::<VmcliNetworkQuery>(&json[json_start..])
-        .context("could not parse vmcli network adapter JSON")?;
 
     Ok(query
         .devices
@@ -65,9 +57,7 @@ mod tests {
     use super::*;
 
     fn set_adapter_property(path: &Path, command: &str, value: &str) -> Result<()> {
-        duct::cmd!(&CONFIG.vmcli, path, "ethernet", command, "ethernet0", value).run()?;
-
-        Ok(())
+        vmcli::run(path, "ethernet", command, "ethernet0", value)
     }
 
     #[test]
@@ -85,17 +75,7 @@ mod tests {
 
         set_adapter_property(&vmx_path, "setpresent", "true")?;
         set_adapter_property(&vmx_path, "setconnectiontype", "custom")?;
-        duct::cmd!(
-            &CONFIG.vmcli,
-            &vmx_path,
-            "ethernet",
-            "setcustomtypebacking",
-            "ethernet0",
-            "vmnet2",
-            "",
-            ""
-        )
-        .run()?;
+        vmcli::set_custom_vmnet(&vmx_path, "ethernet0", "vmnet2")?;
         set_adapter_property(&vmx_path, "setvirtualdevice", "e1000e")?;
         set_adapter_property(&vmx_path, "setstartconnected", "false")?;
         set_adapter_property(&vmx_path, "setexternalid", "nix-vmware-fusion:primary")?;

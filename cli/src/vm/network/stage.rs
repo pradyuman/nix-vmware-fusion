@@ -1,9 +1,8 @@
 use anyhow::{Context, Result};
-use std::ffi::OsStr;
 use std::path::Path;
 
-use crate::config::CONFIG;
 use crate::vm::schema::{NetworkAdapter, NetworkMode};
+use crate::vm::vmcli;
 
 use super::{Action, Plan, external_id};
 
@@ -15,58 +14,46 @@ pub(crate) fn stage(draft_path: &Path, plan: Plan) -> Result<()> {
                 label,
                 name,
                 adapter,
-            } => configure(draft_path, &label, &name, &adapter),
-            Action::Remove { label } => {
-                duct::cmd!(&CONFIG.vmcli, draft_path, "ethernet", "purge", &label)
-                    .run()
-                    .with_context(|| format!("could not remove network adapter {label}"))
-                    .map(|_| ())
-            }
+            } => configure(draft_path, &label, &name, &adapter)
+                .with_context(|| format!("could not configure network adapter {label}")),
+            Action::Remove { label } => vmcli::purge(draft_path, "ethernet", &label)
+                .with_context(|| format!("could not remove network adapter {label}")),
         })
 }
 
 fn configure(path: &Path, label: &str, name: &str, adapter: &NetworkAdapter) -> Result<()> {
-    set(path, label, "setpresent", "true")?;
-    set(path, label, "setconnectiontype", adapter.mode.vmcli_value())?;
-
-    if adapter.mode == NetworkMode::Custom {
-        duct::cmd!(
-            &CONFIG.vmcli,
-            path,
-            "ethernet",
-            "setcustomtypebacking",
-            label,
-            adapter.vmnet.as_deref().expect("validated custom vmnet"),
-            "",
-            ""
-        )
-        .run()
-        .with_context(|| format!("could not set custom vmnet for {label}"))?;
-    }
-
-    set(path, label, "setvirtualdevice", adapter.model.vmcli_value())?;
-    set(
-        path,
-        label,
-        "setstartconnected",
-        adapter.start_connected.to_string(),
-    )?;
-    set(path, label, "setexternalid", external_id(name))?;
-
-    Ok(())
-}
-
-fn set(path: &Path, label: &str, command: &str, value: impl AsRef<OsStr>) -> Result<()> {
-    duct::cmd!(
-        &CONFIG.vmcli,
+    vmcli::run(path, "ethernet", "setpresent", label, "true")?;
+    vmcli::run(
         path,
         "ethernet",
-        command,
+        "setconnectiontype",
         label,
-        value.as_ref()
-    )
-    .run()
-    .with_context(|| format!("could not run {command} for network adapter {label}"))?;
+        adapter.mode.vmcli_value(),
+    )?;
+
+    if adapter.mode == NetworkMode::Custom {
+        vmcli::set_custom_vmnet(
+            path,
+            label,
+            adapter.vmnet.as_deref().expect("validated custom vmnet"),
+        )?;
+    }
+
+    vmcli::run(
+        path,
+        "ethernet",
+        "setvirtualdevice",
+        label,
+        adapter.model.vmcli_value(),
+    )?;
+    vmcli::run(
+        path,
+        "ethernet",
+        "setstartconnected",
+        label,
+        adapter.start_connected.to_string(),
+    )?;
+    vmcli::run(path, "ethernet", "setexternalid", label, external_id(name))?;
 
     Ok(())
 }

@@ -1,8 +1,9 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
 use std::fs;
 use std::path::Path;
 
 use crate::config::CONFIG;
+use crate::vm::vmcli;
 
 use super::{Action, Plan, StagedChange};
 
@@ -17,7 +18,7 @@ pub(crate) fn stage(draft_path: &Path, plan: &Plan) -> Result<()> {
     // Copy the existing VMX contents or create a new baseline
     match &plan.snapshot.raw_contents {
         Some(contents) => fs::write(draft_path, contents)?,
-        None => create(draft_path, &plan.guest_os)?,
+        None => vmcli::create(draft_path, &plan.guest_os)?,
     }
 
     plan.actions.iter().try_for_each(|action| match action {
@@ -26,27 +27,7 @@ pub(crate) fn stage(draft_path: &Path, plan: &Plan) -> Result<()> {
     })
 }
 
-pub(crate) fn create(path: &Path, guest_os: &str) -> Result<()> {
-    let name = path.file_stem().context("missing virtual machine name")?;
-    let directory_path = path.parent().context("missing VMX directory")?;
-
-    duct::cmd!(
-        &CONFIG.vmcli,
-        "vm",
-        "create",
-        "-n",
-        name,
-        "-d",
-        directory_path,
-        "-c",
-        guest_os
-    )
-    .run()?;
-
-    Ok(())
-}
-
-fn set_entry(path: &Path, key: &str, value: &str) -> Result<()> {
+pub(crate) fn set_entry(path: &Path, key: &str, value: &str) -> Result<()> {
     duct::cmd!(
         &CONFIG.dict_tool,
         "-q",
