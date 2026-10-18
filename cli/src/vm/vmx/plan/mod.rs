@@ -1,8 +1,7 @@
 use anyhow::Result;
 
-use crate::vm::schema::VirtualMachine;
-
 use super::{Action, Plan, Snapshot};
+use crate::vm::schema::VirtualMachine;
 
 mod base;
 mod cpu;

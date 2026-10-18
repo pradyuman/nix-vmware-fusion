@@ -2,9 +2,8 @@ use std::ffi::OsString;
 
 use anyhow::{Context, Result, bail};
 
-use crate::config::CONFIG;
-
 use super::{Action, Plan, yes_no};
+use crate::config::CONFIG;
 
 pub(super) fn commit(plan: Plan) -> Result<()> {
     let Plan { state, actions } = plan;

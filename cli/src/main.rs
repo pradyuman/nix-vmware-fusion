@@ -1,7 +1,8 @@
-use anyhow::Result;
-use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 use std::process::ExitCode;
+
+use anyhow::Result;
+use clap::{Parser, Subcommand};
 
 use crate::config::CONFIG;
 

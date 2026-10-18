@@ -1,10 +1,10 @@
-use anyhow::{Context, Result};
-use serde::Deserialize;
 use std::path::Path;
 
-use crate::vm::vmcli;
+use anyhow::{Context, Result};
+use serde::Deserialize;
 
 use super::{NetworkAdapterLabel, NetworkAttachment, Snapshot};
+use crate::vm::vmcli;
 
 #[derive(Deserialize)]
 struct VmcliNetworkQuery {
@@ -52,9 +52,8 @@ fn query_network_attachments(vmx_path: &Path) -> Result<Vec<NetworkAttachment>> 
 
 #[cfg(all(test, feature = "vmware-tests"))]
 mod tests {
-    use crate::vm::test_support::create_vmx;
-
     use super::*;
+    use crate::vm::test_support::create_vmx;
 
     fn set_adapter_property(path: &Path, command: &str, value: &str) -> Result<()> {
         vmcli::run(path, "ethernet", command, "ethernet0", value)

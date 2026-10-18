@@ -2,11 +2,10 @@ use std::path::Path;
 
 use anyhow::{Context, Result};
 
+use super::{Action, Plan, StagedChange};
 use crate::vm::schema::{OpticalDrive, OpticalDriveSource};
 use crate::vm::state::OpticalDriveBinding;
 use crate::vm::vmcli;
-
-use super::{Action, Plan, StagedChange};
 
 pub(crate) fn stage(draft_path: &Path, plan: Plan) -> Result<StagedChange> {
     let Plan { mut state, actions } = plan;
@@ -56,12 +55,11 @@ fn configure(path: &Path, label: &str, drive: &OpticalDrive) -> Result<()> {
 mod tests {
     use std::fs;
 
+    use super::*;
     use crate::vm::optical::inspect;
     use crate::vm::schema::OpticalImagePath;
     use crate::vm::state::State;
     use crate::vm::test_support::create_vmx;
-
-    use super::*;
 
     #[test]
     fn vmcli_configures_and_detaches_optical_drive() -> Result<()> {

@@ -1,7 +1,9 @@
-use anyhow::{Context, Result};
-use serde::{Deserialize, de::DeserializeOwned};
 use std::ffi::OsString;
 use std::path::Path;
+
+use anyhow::{Context, Result};
+use serde::Deserialize;
+use serde::de::DeserializeOwned;
 
 use crate::config::CONFIG;
 

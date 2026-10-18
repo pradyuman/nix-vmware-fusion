@@ -1,13 +1,13 @@
-use anyhow::{Context, Result, bail, ensure};
-use serde::Deserialize;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use anyhow::{Context, Result, bail, ensure};
+use serde::Deserialize;
+
+use super::{DiskAttachment, DiskFormat, DiskImage, DiskLabel, DiskState, Snapshot};
 use crate::config::CONFIG;
 use crate::vm::schema::VirtualDisks;
 use crate::vm::vmcli;
-
-use super::{DiskAttachment, DiskFormat, DiskImage, DiskLabel, DiskState, Snapshot};
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]

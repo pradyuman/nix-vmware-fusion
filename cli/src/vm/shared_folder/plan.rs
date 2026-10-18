@@ -2,9 +2,8 @@ use std::collections::HashSet;
 
 use anyhow::{Result, ensure};
 
-use crate::vm::schema::{SharedFolder, SharedFolders};
-
 use super::{Action, ObservedSharedFolder, Plan, SharedFolderLabel, Snapshot};
+use crate::vm::schema::{SharedFolder, SharedFolders};
 
 struct PlanningState {
     unclaimed_folders: Vec<ObservedSharedFolder>,
@@ -131,9 +130,8 @@ fn matches_configuration(observed: &ObservedSharedFolder, configured: &SharedFol
 mod tests {
     use std::path::PathBuf;
 
-    use crate::vm::schema::SharedFolderPath;
-
     use super::*;
+    use crate::vm::schema::SharedFolderPath;
 
     fn configured_folders(name: &str, path: &str, read_only: bool) -> SharedFolders {
         SharedFolders::from([(

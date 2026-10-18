@@ -1,6 +1,7 @@
 use anyhow::{Result, ensure};
 
-use crate::vm::{schema::VirtualMachine, vmx::Action};
+use crate::vm::schema::VirtualMachine;
+use crate::vm::vmx::Action;
 
 pub(super) fn plan(configured: &VirtualMachine) -> Result<[Action; 2]> {
     Ok([

@@ -3,10 +3,9 @@ use std::collections::BTreeMap;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
+use super::schema::VmnetName;
 use crate::config::CONFIG;
 use crate::state_file::PersistentState;
-
-use super::schema::VmnetName;
 
 pub(super) type ManagedNetworks = BTreeMap<VmnetName, NetworkMetadata>;
 

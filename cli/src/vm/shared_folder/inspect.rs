@@ -3,9 +3,8 @@ use std::path::{Path, PathBuf};
 use anyhow::{Context, Result};
 use serde::Deserialize;
 
-use crate::vm::vmcli;
-
 use super::{ObservedSharedFolder, SharedFolderLabel, Snapshot};
+use crate::vm::vmcli;
 
 #[derive(Deserialize)]
 struct VmcliSharedFolderQuery {
@@ -57,9 +56,8 @@ fn query_shared_folders(vmx_path: &Path) -> Result<Vec<ObservedSharedFolder>> {
 mod tests {
     use std::fs;
 
-    use crate::vm::test_support::create_vmx;
-
     use super::*;
+    use crate::vm::test_support::create_vmx;
 
     #[test]
     fn vmcli_reports_no_shared_folders() -> Result<()> {

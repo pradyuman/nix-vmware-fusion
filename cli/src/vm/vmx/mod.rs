@@ -8,10 +8,9 @@ mod plan;
 pub(super) use plan::plan;
 
 mod stage;
-pub(super) use stage::stage;
-
 #[cfg(all(test, feature = "vmware-tests"))]
 pub(super) use stage::set_entry;
+pub(super) use stage::stage;
 
 // Inspect
 

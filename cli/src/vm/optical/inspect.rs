@@ -1,11 +1,11 @@
-use anyhow::{Context, Result};
-use serde::Deserialize;
 use std::path::{Path, PathBuf};
 
-use crate::vm::state::State;
-use crate::vm::vmcli;
+use anyhow::{Context, Result};
+use serde::Deserialize;
 
 use super::{OpticalAttachment, OpticalDriveLabel, Snapshot};
+use crate::vm::state::State;
+use crate::vm::vmcli;
 
 #[derive(Deserialize)]
 struct VmcliOpticalQuery {
@@ -62,9 +62,8 @@ fn query_optical_attachments(vmx_path: &Path) -> Result<Vec<OpticalAttachment>> 
 mod tests {
     use std::fs;
 
-    use crate::vm::test_support::create_vmx;
-
     use super::*;
+    use crate::vm::test_support::create_vmx;
 
     #[test]
     fn vmcli_reports_no_optical_attachments() -> Result<()> {

@@ -1,7 +1,8 @@
-use anyhow::Result;
-use serde::Deserialize;
 use std::path::PathBuf;
 use std::sync::LazyLock;
+
+use anyhow::Result;
+use serde::Deserialize;
 
 const DEFAULT_NETWORK_STATE: &str = "/Library/Application Support/nix-vmware-fusion/networks.json";
 

@@ -1,6 +1,6 @@
-use crate::vm::{schema::Isolation, vmx::Action};
-
 use super::boolean;
+use crate::vm::schema::Isolation;
+use crate::vm::vmx::Action;
 
 pub(super) fn plan(configured: &Isolation) -> [Action; 3] {
     [

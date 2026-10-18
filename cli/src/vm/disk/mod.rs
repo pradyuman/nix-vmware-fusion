@@ -1,6 +1,7 @@
-use nutype::nutype;
 use std::num::NonZeroU64;
 use std::path::PathBuf;
+
+use nutype::nutype;
 
 use crate::vm::schema::DiskBus;
 

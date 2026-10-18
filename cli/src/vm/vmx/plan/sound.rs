@@ -1,6 +1,6 @@
-use crate::vm::{schema::SoundCard, vmx::Action};
-
 use super::boolean;
+use crate::vm::schema::SoundCard;
+use crate::vm::vmx::Action;
 
 const MANAGED_KEYS: [&str; 7] = [
     "sound.present",

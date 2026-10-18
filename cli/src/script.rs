@@ -1,6 +1,7 @@
-use anyhow::Result;
 use std::ffi::OsString;
 use std::process::ExitCode;
+
+use anyhow::Result;
 
 pub(crate) fn run(name: &str, contents: &str, extra_args: &[OsString]) -> Result<ExitCode> {
     let mut args = vec![OsString::from("-c"), contents.into(), name.into()];

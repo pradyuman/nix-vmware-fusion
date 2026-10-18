@@ -1,11 +1,11 @@
-use anyhow::Result;
 use std::fs;
 use std::path::Path;
 
-use crate::config::CONFIG;
-use crate::vm::vmcli;
+use anyhow::Result;
 
 use super::{Action, Plan, StagedChange};
+use crate::config::CONFIG;
+use crate::vm::vmcli;
 
 impl StagedChange {
     pub(crate) fn is_noop(&self) -> bool {
@@ -80,9 +80,8 @@ mod tests {
 
     #[cfg(feature = "vmware-tests")]
     mod vmware {
-        use crate::vm::test_support::{GUEST_OS, assert, create_vmx};
-
         use super::*;
+        use crate::vm::test_support::{GUEST_OS, assert, create_vmx};
 
         #[test]
         fn vmcli_creates_vmx() -> Result<()> {

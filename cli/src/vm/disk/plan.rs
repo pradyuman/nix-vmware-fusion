@@ -1,10 +1,10 @@
-use anyhow::{Context, Result, bail, ensure};
 use std::cmp::Ordering;
 use std::collections::HashSet;
 
-use crate::vm::schema::{VirtualDisk, VirtualDisks};
+use anyhow::{Context, Result, bail, ensure};
 
 use super::{Action, BYTES_PER_GIB, DiskFormat, DiskImage, Plan, Snapshot};
+use crate::vm::schema::{VirtualDisk, VirtualDisks};
 
 pub(crate) fn plan(configured: &VirtualDisks, snapshot: Snapshot) -> Result<Plan> {
     validate_disk_paths(configured, &snapshot.disk_images)?;
@@ -148,10 +148,9 @@ mod tests {
     use std::num::NonZeroU64;
     use std::path::Path;
 
+    use super::*;
     use crate::vm::disk::{DiskAttachment, DiskImage, DiskLabel, DiskState};
     use crate::vm::schema::{DiskBus, DiskPath, VirtualDisk};
-
-    use super::*;
 
     fn configured_disks(path: &Path, bus: DiskBus) -> VirtualDisks {
         VirtualDisks::from([("primary".to_owned(), configured_disk(path, bus))])

@@ -1,6 +1,7 @@
+use std::io::Cursor;
+
 use ::plist::{Dictionary, Value};
 use anyhow::{Context, Result};
-use std::io::Cursor;
 
 use super::{Action, Plan, StagedChange, StagedWrite};
 
@@ -56,9 +57,8 @@ pub(crate) fn stage(plan: Plan) -> Result<StagedChange> {
 
 #[cfg(test)]
 mod tests {
-    use crate::vm::plist::Snapshot;
-
     use super::*;
+    use crate::vm::plist::Snapshot;
 
     fn plan(raw_contents: Option<Vec<u8>>, action: Action) -> Plan {
         Plan {

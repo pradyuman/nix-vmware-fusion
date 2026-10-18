@@ -1,9 +1,6 @@
-use crate::vm::{
-    schema::{Display, FullScreenFit, SingleWindowFit},
-    vmx::Action,
-};
-
 use super::{boolean, optional};
+use crate::vm::schema::{Display, FullScreenFit, SingleWindowFit};
+use crate::vm::vmx::Action;
 
 const MANAGED_KEYS: [&str; 6] = [
     "mks.enable3d",
@@ -76,9 +73,8 @@ fn graphics_memory(display: &Display) -> Action {
 mod tests {
     use std::num::NonZeroU64;
 
-    use crate::vm::schema::{DisplayGraphics, NativeDisplayResolution, ScaledHighResolution};
-
     use super::*;
+    use crate::vm::schema::{DisplayGraphics, NativeDisplayResolution, ScaledHighResolution};
 
     #[test]
     fn display_settings_are_planned() {

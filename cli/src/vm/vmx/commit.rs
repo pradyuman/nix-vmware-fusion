@@ -1,7 +1,8 @@
-use anyhow::{Context, Result};
-use atomic_write_file::AtomicWriteFile;
 use std::fs;
 use std::io::Write;
+
+use anyhow::{Context, Result};
+use atomic_write_file::AtomicWriteFile;
 
 use super::StagedChange;
 

@@ -1,10 +1,10 @@
-use anyhow::{Context, Result};
 use std::path::Path;
 
-use crate::vm::schema::{NetworkAdapter, NetworkMode};
-use crate::vm::vmcli;
+use anyhow::{Context, Result};
 
 use super::{Action, Plan, external_id};
+use crate::vm::schema::{NetworkAdapter, NetworkMode};
+use crate::vm::vmcli;
 
 pub(crate) fn stage(draft_path: &Path, plan: Plan) -> Result<()> {
     plan.actions
@@ -60,11 +60,10 @@ fn configure(path: &Path, label: &str, name: &str, adapter: &NetworkAdapter) -> 
 
 #[cfg(all(test, feature = "vmware-tests"))]
 mod tests {
+    use super::*;
     use crate::vm::network::inspect;
     use crate::vm::schema::NetworkAdapterModel;
     use crate::vm::test_support::create_vmx;
-
-    use super::*;
 
     #[test]
     fn vmcli_configures_and_removes_network_adapter() -> Result<()> {

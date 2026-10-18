@@ -1,9 +1,8 @@
 use std::collections::BTreeMap;
 
+use super::{Action, OpticalAttachment, Plan, Snapshot};
 use crate::vm::schema::{OpticalDrive, OpticalDriveSource, OpticalDrives};
 use crate::vm::state::{OpticalDriveBindings, State};
-
-use super::{Action, OpticalAttachment, Plan, Snapshot};
 
 pub(crate) fn plan(configured: &OpticalDrives, snapshot: Snapshot) -> Plan {
     let Snapshot {
@@ -70,10 +69,9 @@ fn matches_configuration(attached: &OpticalAttachment, configured: &OpticalDrive
 mod tests {
     use std::path::{Path, PathBuf};
 
+    use super::*;
     use crate::vm::schema::OpticalImagePath;
     use crate::vm::state::OpticalDriveBinding;
-
-    use super::*;
 
     fn image_drive(path: &str) -> OpticalDrive {
         OpticalDrive {

@@ -1,9 +1,9 @@
-use anyhow::{Context, Result, ensure};
 use std::collections::HashSet;
 
-use crate::vm::schema::{NetworkAdapter, NetworkAdapters, NetworkMode};
+use anyhow::{Context, Result, ensure};
 
 use super::{Action, NetworkAdapterLabel, NetworkAttachment, Plan, Snapshot, external_id};
+use crate::vm::schema::{NetworkAdapter, NetworkAdapters, NetworkMode};
 
 struct PlanningState {
     unclaimed_attachments: Vec<NetworkAttachment>,
@@ -142,9 +142,8 @@ fn matches_configuration(attached: &NetworkAttachment, configured: &NetworkAdapt
 
 #[cfg(test)]
 mod tests {
-    use crate::vm::schema::NetworkAdapterModel;
-
     use super::*;
+    use crate::vm::schema::NetworkAdapterModel;
 
     fn configured_adapters(name: &str, mode: NetworkMode) -> NetworkAdapters {
         NetworkAdapters::from([(name.to_owned(), configured_adapter(mode))])

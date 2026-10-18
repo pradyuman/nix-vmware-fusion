@@ -1,10 +1,10 @@
-use anyhow::{Context, Result};
 use std::path::Path;
 
-use crate::vm::schema::DiskBus;
-use crate::vm::vmcli;
+use anyhow::{Context, Result};
 
 use super::{Action, CommitAction, DiskLabel, Plan, StagedChange};
+use crate::vm::schema::DiskBus;
+use crate::vm::vmcli;
 
 pub(crate) fn stage(draft_path: &Path, plan: Plan) -> Result<StagedChange> {
     let commit_actions = plan
@@ -68,9 +68,8 @@ fn prepare_free_label(draft_path: &Path, bus: DiskBus) -> Result<DiskLabel> {
 mod tests {
     use std::num::NonZeroU64;
 
-    use crate::vm::disk::DiskFormat;
-
     use super::*;
+    use crate::vm::disk::DiskFormat;
 
     #[test]
     fn disk_changes_are_staged_for_commit() -> Result<()> {
@@ -124,11 +123,10 @@ mod tests {
     mod vmware {
         use std::fs;
 
+        use super::*;
         use crate::vm::disk::inspect;
         use crate::vm::schema::VirtualDisks;
         use crate::vm::test_support::{create_vmdk, create_vmx};
-
-        use super::*;
 
         #[test]
         fn vmcli_manages_disk_attachments() -> Result<()> {

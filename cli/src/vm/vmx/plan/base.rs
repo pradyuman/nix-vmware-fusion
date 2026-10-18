@@ -1,7 +1,5 @@
-use crate::vm::{
-    schema::VirtualMachine,
-    vmx::{Action, Snapshot},
-};
+use crate::vm::schema::VirtualMachine;
+use crate::vm::vmx::{Action, Snapshot};
 
 pub(super) fn plan(configured: &VirtualMachine, snapshot: &Snapshot) -> Vec<Action> {
     let mut actions = vec![

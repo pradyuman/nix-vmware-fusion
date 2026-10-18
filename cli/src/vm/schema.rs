@@ -1,8 +1,9 @@
-use nutype::nutype;
-use serde::Deserialize;
 use std::collections::BTreeMap;
 use std::num::NonZeroU64;
 use std::path::{Path, PathBuf};
+
+use nutype::nutype;
+use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]

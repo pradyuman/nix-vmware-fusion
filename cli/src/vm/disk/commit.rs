@@ -4,9 +4,8 @@ use std::path::Path;
 
 use anyhow::{Context, Result, bail, ensure};
 
-use crate::config::CONFIG;
-
 use super::{CommitAction, DiskFormat, StagedChange};
+use crate::config::CONFIG;
 
 impl StagedChange {
     pub(crate) fn is_noop(&self) -> bool {
@@ -173,11 +172,10 @@ fn move_disk(from: &Path, to: &Path) -> Result<()> {
 
 #[cfg(all(test, feature = "vmware-tests"))]
 mod tests {
+    use super::*;
     use crate::vm::disk::BYTES_PER_GIB;
     use crate::vm::disk::inspect::read_state;
     use crate::vm::test_support::create_vmdk;
-
-    use super::*;
 
     const BYTES_PER_MIB: u64 = 1024_u64.pow(2);
 

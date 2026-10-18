@@ -3,7 +3,6 @@
 use std::fs;
 
 use anyhow::Result;
-
 use support::config;
 
 mod support;

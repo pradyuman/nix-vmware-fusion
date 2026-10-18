@@ -3,10 +3,9 @@ use std::path::Path;
 
 use anyhow::{Context, Result, ensure};
 
+use super::{Action, Plan};
 use crate::vm::schema::SharedFolder;
 use crate::vm::vmcli;
-
-use super::{Action, Plan};
 
 pub(crate) fn stage(draft_path: &Path, plan: Plan) -> Result<()> {
     plan.actions
@@ -54,11 +53,10 @@ fn configure(path: &Path, label: &str, name: &str, folder: &SharedFolder) -> Res
 
 #[cfg(all(test, feature = "vmware-tests"))]
 mod tests {
+    use super::*;
     use crate::vm::schema::SharedFolderPath;
     use crate::vm::shared_folder::inspect;
     use crate::vm::test_support::create_vmx;
-
-    use super::*;
 
     #[test]
     fn vmcli_configures_updates_and_removes_shared_folder() -> Result<()> {

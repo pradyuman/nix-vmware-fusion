@@ -4,9 +4,8 @@ use std::path::Path;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
-use crate::state_file::PersistentState;
-
 use super::optical::OpticalDriveLabel;
+use crate::state_file::PersistentState;
 
 const FILENAME: &str = ".nix-vmware-fusion.json";
 

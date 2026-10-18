@@ -7,7 +7,6 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, ensure};
 use serde_json::{Value, json};
-
 use support::config;
 
 mod support;

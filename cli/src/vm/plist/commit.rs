@@ -1,6 +1,7 @@
+use std::io::Write;
+
 use anyhow::Result;
 use atomic_write_file::AtomicWriteFile;
-use std::io::Write;
 
 use super::StagedChange;
 

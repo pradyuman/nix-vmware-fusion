@@ -1,8 +1,7 @@
 use std::path::PathBuf;
 
-use crate::vm::schema::OpticalDrive;
-
 use super::state::State;
+use crate::vm::schema::OpticalDrive;
 
 mod commit;
 

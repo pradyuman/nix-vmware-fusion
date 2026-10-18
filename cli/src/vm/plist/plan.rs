@@ -1,6 +1,5 @@
-use crate::vm::schema::{Display, ScaledHighResolution};
-
 use super::{Action, Plan, Snapshot};
+use crate::vm::schema::{Display, ScaledHighResolution};
 
 impl ScaledHighResolution {
     fn plist_value(self) -> Option<u8> {

@@ -1,9 +1,6 @@
-use crate::vm::{
-    schema::{Usb, UsbNewDeviceAction},
-    vmx::Action,
-};
-
 use super::optional;
+use crate::vm::schema::{Usb, UsbNewDeviceAction};
+use crate::vm::vmx::Action;
 
 const MANAGED_KEYS: [&str; 4] = [
     "usb.present",

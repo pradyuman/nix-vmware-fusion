@@ -71,6 +71,7 @@
               rustfmt = {
                 enable = true;
                 edition = "2024";
+                package = pkgs.rustfmt.override { asNightly = true; };
               };
               shellcheck.enable = true;
             };

@@ -4,7 +4,8 @@ use std::path::Path;
 
 use anyhow::{Context, Result, ensure};
 use atomic_write_file::AtomicWriteFile;
-use serde::{Deserialize, Serialize, de::DeserializeOwned};
+use serde::de::DeserializeOwned;
+use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]

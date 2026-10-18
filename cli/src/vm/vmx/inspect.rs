@@ -1,7 +1,7 @@
-use anyhow::{Context, Result};
-use std::fs;
-use std::io;
 use std::path::{Path, PathBuf};
+use std::{fs, io};
+
+use anyhow::{Context, Result};
 
 use super::Snapshot;
 
