@@ -72,7 +72,7 @@ impl PlanningState {
         pending_adapters
             .into_iter()
             .try_fold(self, |mut state, (name, adapter)| {
-                // Reuse an unclaimed adapter before allocating a new VMware label.
+                // Reuse an unclaimed adapter before allocating a new VMware label
                 let label = if state.unclaimed_attachments.is_empty() {
                     let label = first_free_label(&state.occupied_labels)?;
                     state.occupied_labels.insert(label.clone());
@@ -123,7 +123,7 @@ fn validate_adapter(name: &str, adapter: &NetworkAdapter) -> Result<()> {
 }
 
 fn first_free_label(occupied_labels: &HashSet<NetworkAdapterLabel>) -> Result<NetworkAdapterLabel> {
-    // VMware Fusion supports up to ten adapters, labeled ethernet0 through ethernet9.
+    // VMware Fusion supports up to ten adapters, labeled ethernet0 through ethernet9
     (0..10)
         .map(|index| NetworkAdapterLabel::new(format!("ethernet{index}")))
         .find(|label| !occupied_labels.contains(label))

@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::Path;
 
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, ensure};
 
 mod disk;
 mod network;
@@ -144,7 +144,7 @@ fn commit(staged: StagedChange) -> Result<()> {
     staged.vmx.commit()?;
     staged.plist.commit()?;
 
-    // State can change without the VMX.
+    // State can change without the VMX
     staged.optical.commit(&bundle_path)?;
 
     Ok(())
@@ -158,7 +158,7 @@ fn ensure_stopped(vmx_path: &Path) -> Result<()> {
     let bundle_path = vmx_path.parent().context("missing VMX directory")?;
     let state = vmcli::power_state(vmx_path)?;
 
-    anyhow::ensure!(
+    ensure!(
         state == "off",
         "{} must be fully shut down before applying changes (current power state: {state})",
         bundle_path.display()
@@ -184,10 +184,10 @@ pub(crate) fn apply(file: &Path) -> Result<()> {
 mod tests {
     use std::path::Path;
 
-    use super::disk::BYTES_PER_GIB;
-    use super::schema::VirtualMachine;
-    use super::test_support::{GUEST_OS, assert, create_vmdk, create_vmx};
     use super::*;
+    use crate::vm::disk::BYTES_PER_GIB;
+    use crate::vm::schema::VirtualMachine;
+    use crate::vm::test_support::{GUEST_OS, assert, create_vmdk, create_vmx};
 
     fn virtual_machine_ir(bundle_path: &Path, disk_path: &Path) -> serde_json::Value {
         serde_json::json!({

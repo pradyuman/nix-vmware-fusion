@@ -78,7 +78,7 @@ impl PlanningState {
         pending_folders
             .into_iter()
             .fold(self, |mut state, (name, folder)| {
-                // Reuse an unclaimed shared folder before allocating a new VMware label.
+                // Reuse an unclaimed shared folder before allocating a new VMware label
                 let label = if state.unclaimed_folders.is_empty() {
                     let label = first_free_label(&state.occupied_labels);
                     state.occupied_labels.insert(label.clone());

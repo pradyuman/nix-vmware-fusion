@@ -2,8 +2,8 @@ use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 
-use super::vmcli;
 use crate::config::CONFIG;
+use crate::vm::vmcli;
 
 pub(super) mod assert;
 

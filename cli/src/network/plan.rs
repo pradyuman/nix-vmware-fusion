@@ -1,8 +1,8 @@
 use anyhow::Result;
 
-use super::schema::{Network, Networks, VmnetName};
-use super::state::{NetworkMetadata, State};
 use super::{Action, NetworkAnswers, Plan, Snapshot, yes_no};
+use crate::network::schema::{Network, Networks, VmnetName};
+use crate::network::state::{NetworkMetadata, State};
 
 pub(super) fn plan(configured: &Networks, snapshot: Snapshot) -> Result<Plan> {
     let Snapshot { state, answers } = snapshot;

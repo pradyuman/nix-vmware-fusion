@@ -20,7 +20,7 @@ pub(crate) fn plan(configured: &OpticalDrives, snapshot: Snapshot) -> Plan {
         .into_iter()
         .partition::<OpticalDriveBindings, _>(|(name, _)| configured.contains_key(name));
 
-    // Remove only drives previously claimed in our state file.
+    // Remove only drives previously claimed in our state file
     let detach_actions = removed_bindings
         .into_values()
         .filter(|binding| attachments.contains_key(&binding.label))

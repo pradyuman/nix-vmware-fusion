@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 use std::{fs, io};
 
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, bail};
 
 use super::Snapshot;
 
@@ -45,7 +45,7 @@ fn resolve_path(bundle_path: &Path) -> Result<PathBuf> {
         // One VMX: use its existing path
         [vmx_path] => vmx_path.clone(),
         // Multiple VMX files: refuse to guess which one to manage
-        _ => anyhow::bail!("multiple VMX files found in {}", bundle_path.display()),
+        _ => bail!("multiple VMX files found in {}", bundle_path.display()),
     };
 
     Ok(target_path)

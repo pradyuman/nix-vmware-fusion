@@ -2,8 +2,8 @@ use std::path::PathBuf;
 
 use nutype::nutype;
 
-use super::state::State;
 use crate::vm::schema::OpticalDrive;
+use crate::vm::state::State;
 
 mod commit;
 

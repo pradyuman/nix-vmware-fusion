@@ -3,15 +3,9 @@ use std::path::Path;
 
 use anyhow::Result;
 
-use super::{Action, Plan, StagedChange};
+use super::{Action, Plan};
 use crate::config::CONFIG;
 use crate::vm::vmcli;
-
-impl StagedChange {
-    pub(crate) fn is_noop(&self) -> bool {
-        self.snapshot.raw_contents.as_deref() == Some(self.updated_contents.as_str())
-    }
-}
 
 // Draft the updated contents without modifying the original VMX
 pub(crate) fn stage(draft_path: &Path, plan: &Plan) -> Result<()> {
@@ -56,62 +50,39 @@ fn remove_entry(path: &Path, key: &str) -> Result<()> {
     Ok(())
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "vmware-tests"))]
 mod tests {
     use super::*;
-    use crate::vm::vmx::Snapshot;
+    use crate::vm::test_support::{GUEST_OS, assert, create_vmx};
 
-    fn staged_change(prev: Option<&str>, updated_contents: &str) -> StagedChange {
-        StagedChange {
-            snapshot: Snapshot {
-                target_path: "test.vmx".into(),
-                raw_contents: prev.map(str::to_owned),
-            },
-            updated_contents: updated_contents.to_owned(),
-        }
+    #[test]
+    fn vmcli_creates_vmx() -> Result<()> {
+        let (_temp_dir, vmx_path) = create_vmx()?;
+
+        assert::vmx_entry(&vmx_path, "guestOS", GUEST_OS)?;
+
+        Ok(())
     }
 
     #[test]
-    fn missing_file_is_not_a_noop_even_with_empty_contents() {
-        let staged = staged_change(None, "");
+    fn dict_tool_sets_and_updates_vmx_entries() -> Result<()> {
+        let (_temp_dir, vmx_path) = create_vmx()?;
 
-        assert!(!staged.is_noop());
-    }
+        // Test entries
+        let display_name = "Test VM";
+        let updated_display_name = "Updated Test VM";
+        let vcpus = "4";
 
-    #[cfg(feature = "vmware-tests")]
-    mod vmware {
-        use super::*;
-        use crate::vm::test_support::{GUEST_OS, assert, create_vmx};
+        // Seed entries
+        set_entry(&vmx_path, "displayName", display_name)?;
+        set_entry(&vmx_path, "numvcpus", vcpus)?;
 
-        #[test]
-        fn vmcli_creates_vmx() -> Result<()> {
-            let (_temp_dir, vmx_path) = create_vmx()?;
+        // Set displayName again to verify that dictTool replaces the existing entry
+        set_entry(&vmx_path, "displayName", updated_display_name)?;
 
-            assert::vmx_entry(&vmx_path, "guestOS", GUEST_OS)?;
+        assert::vmx_entry(&vmx_path, "displayName", updated_display_name)?;
+        assert::vmx_entry(&vmx_path, "numvcpus", vcpus)?;
 
-            Ok(())
-        }
-
-        #[test]
-        fn dict_tool_sets_and_updates_vmx_entries() -> Result<()> {
-            let (_temp_dir, vmx_path) = create_vmx()?;
-
-            // Test entries
-            let display_name = "Test VM";
-            let updated_display_name = "Updated Test VM";
-            let vcpus = "4";
-
-            // Seed entries
-            set_entry(&vmx_path, "displayName", display_name)?;
-            set_entry(&vmx_path, "numvcpus", vcpus)?;
-
-            // Set displayName again to verify that dictTool replaces the existing entry
-            set_entry(&vmx_path, "displayName", updated_display_name)?;
-
-            assert::vmx_entry(&vmx_path, "displayName", updated_display_name)?;
-            assert::vmx_entry(&vmx_path, "numvcpus", vcpus)?;
-
-            Ok(())
-        }
+        Ok(())
     }
 }

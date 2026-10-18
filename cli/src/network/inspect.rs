@@ -3,8 +3,8 @@ use std::path::Path;
 
 use anyhow::{Context, Result};
 
-use super::state::State;
 use super::{NetworkAnswers, Snapshot};
+use crate::network::state::State;
 
 const NETWORKING_PATH: &str = "/Library/Preferences/VMware Fusion/networking";
 
