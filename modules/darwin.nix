@@ -132,7 +132,7 @@ in
         fi
 
         if [[ "$installed_build" != "${localPkgs.dmg.build}" ]]; then
-          ${lib.getExe localPkgs.cli} install
+          ${lib.getExe localPkgs.cli} install ${lib.escapeShellArg localPkgs.dmg}
         fi
 
         ${lib.getExe localPkgs.cli} network apply ${lib.escapeShellArg networkConfiguration}

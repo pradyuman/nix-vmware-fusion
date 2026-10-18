@@ -5,7 +5,6 @@
   bash,
   gum,
   qemu-utils,
-  dmg,
   commandLineTools,
 }:
 
@@ -21,7 +20,6 @@ rustPlatform.buildRustPackage {
 
   postInstall = ''
     wrapProgram "$out/bin/nix-vmware-fusion" \
-      --set NIX_VMWARE_FUSION_DMG ${lib.escapeShellArg (toString dmg)} \
       --set NIX_VMWARE_FUSION_DICT_TOOL ${lib.escapeShellArg (lib.getExe' commandLineTools "dictTool")} \
       --set NIX_VMWARE_FUSION_QEMU_IMG ${lib.escapeShellArg (lib.getExe' qemu-utils "qemu-img")} \
       --set NIX_VMWARE_FUSION_VDISK_MANAGER ${lib.escapeShellArg (lib.getExe' commandLineTools "vmware-vdiskmanager")} \

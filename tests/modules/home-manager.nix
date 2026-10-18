@@ -8,17 +8,6 @@ let
   homeManagerLib = import "${homeManager}/lib" { inherit lib; };
   pkgs = import nixpkgs {
     localSystem = "aarch64-darwin";
-
-    # Evaluate the module without requiring the proprietary DMG.
-    overlays = [
-      (_final: prev: {
-        requireFile =
-          _:
-          prev.runCommand "mock-vmware-fusion-dmg" { } ''
-            touch "$out"
-          '';
-      })
-    ];
   };
 
   mkHome =

@@ -4,8 +4,6 @@ use std::process::ExitCode;
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 
-use crate::config::CONFIG;
-
 mod config;
 mod network;
 mod script;
@@ -33,8 +31,8 @@ enum Commands {
         command: VmCommands,
     },
 
-    /// Install VMware Fusion
-    Install,
+    /// Install VMware Fusion from a DMG
+    Install { dmg: PathBuf },
 
     /// Uninstall VMware Fusion
     Uninstall,
@@ -77,10 +75,10 @@ fn main() -> Result<ExitCode> {
             vm::apply(&file)?;
             Ok(ExitCode::SUCCESS)
         }
-        Commands::Install => script::run(
+        Commands::Install { dmg } => script::run(
             "install.sh",
             include_str!("../scripts/install.sh"),
-            &[CONFIG.dmg.as_os_str().to_owned()],
+            &[dmg.into_os_string()],
         ),
         Commands::Uninstall => {
             script::run("uninstall.sh", include_str!("../scripts/uninstall.sh"), &[])

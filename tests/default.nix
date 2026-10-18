@@ -34,7 +34,6 @@
       cliArtifacts = craneLib.buildDepsOnly cliArgs;
 
       vmwareTestEnv = ''
-        export NIX_VMWARE_FUSION_DMG=/dev/null
         export NIX_VMWARE_FUSION_DICT_TOOL=${pkgs.lib.getExe' localPkgs.commandLineTools "dictTool"}
         export NIX_VMWARE_FUSION_QEMU_IMG=${pkgs.lib.getExe' pkgs.qemu-utils "qemu-img"}
         export NIX_VMWARE_FUSION_VDISK_MANAGER=${pkgs.lib.getExe' localPkgs.commandLineTools "vmware-vdiskmanager"}

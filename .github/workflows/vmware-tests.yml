@@ -41,10 +41,10 @@ jobs:
           nix shell --inputs-from . nixpkgs#rclone --command \
             rclone copyto "r2:$R2_BUCKET/$R2_DMG_KEY" "$dmg"
 
-          nix store add --mode flat --hash-algo sha256 "$dmg"
+          echo "DMG=$dmg" >> "$GITHUB_ENV"
 
       - name: Install VMware Fusion
-        run: nix run . -- install
+        run: nix run . -- install "$DMG"
 
       - name: Run VMware tests
         run: nix run .#vmware-tests

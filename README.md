@@ -20,7 +20,11 @@ If prompted, review and accept Broadcom's Terms and Conditions and complete the
 Trade Compliance form. Broadcom's [download instructions][broadcom-download-instructions]
 explain these steps.
 
-### 2. Add the DMG to the Nix store
+### 2. Install VMware Fusion
+
+#### With nix-darwin
+
+Add the DMG to the Nix store:
 
 ```sh
 # Replace this path if the DMG is elsewhere.
@@ -35,11 +39,7 @@ nix store add \
 > [!NOTE]
 > You will only need to import the DMG once per pinned VMware Fusion build.
 
-### 3. Install VMware Fusion
-
-#### With nix-darwin
-
-Add the module to your nix-darwin configuration:
+Then add the module to your nix-darwin configuration:
 
 ```nix
 {
@@ -88,10 +88,12 @@ managed.
 
 #### Directly
 
-If you do not use nix-darwin, you can run the installer directly:
+If you do not use nix-darwin, you can run the installer directly with the DMG
+you downloaded:
 
 ```sh
-NIXPKGS_ALLOW_UNFREE=1 nix run --impure github:pradyuman/nix-vmware-fusion -- install
+nix run github:pradyuman/nix-vmware-fusion -- install \
+  ~/Downloads/VMware-Fusion-26H1u1-25689522_universal.dmg
 ```
 
 The installer uses `sudo` to install the app in `/Applications` and initialize
@@ -429,7 +431,7 @@ programs.vmware-fusion = {
 You can also run the uninstaller directly:
 
 ```sh
-NIXPKGS_ALLOW_UNFREE=1 nix run --impure github:pradyuman/nix-vmware-fusion -- uninstall
+nix run github:pradyuman/nix-vmware-fusion -- uninstall
 ```
 
 The uninstaller removes `/Applications/VMware Fusion.app` but leaves your
@@ -456,7 +458,7 @@ programs.vmware-fusion = {
 You can also run the command directly:
 
 ```sh
-NIXPKGS_ALLOW_UNFREE=1 nix run --impure github:pradyuman/nix-vmware-fusion -- purge
+nix run github:pradyuman/nix-vmware-fusion -- purge
 ```
 
 Purging also removes `usbarb.rules` if the VMware application support directory

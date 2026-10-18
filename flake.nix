@@ -43,10 +43,7 @@
           localPkgs = import ./pkgs { inherit pkgs; };
         in
         {
-          _module.args.pkgs = import inputs.nixpkgs {
-            inherit system;
-            config.allowUnfreePredicate = package: inputs.nixpkgs.lib.getName package == "vmware-fusion-dmg";
-          };
+          _module.args.pkgs = import inputs.nixpkgs { inherit system; };
 
           packages.default = localPkgs.cli;
 

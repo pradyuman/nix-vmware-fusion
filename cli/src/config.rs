@@ -11,7 +11,6 @@ pub(crate) static CONFIG: LazyLock<Config> =
 
 #[derive(Debug, Deserialize)]
 pub(crate) struct Config {
-    pub dmg: PathBuf,
     pub dict_tool: PathBuf,
     pub qemu_img: PathBuf,
     pub vdisk_manager: PathBuf,
